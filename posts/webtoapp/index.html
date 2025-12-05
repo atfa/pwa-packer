@@ -446,8 +446,14 @@
                 ELEMENTS.pwaWarning.classList.remove('hidden');
             }
 
+            // 修改：注册 SW 并强制检查更新
             if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('./sw.js').catch(console.error);
+                navigator.serviceWorker.register('./sw.js')
+                    .then(registration => {
+                        // 强制更新检查，解决 "部署后不更新" 的问题
+                        registration.update();
+                    })
+                    .catch(console.error);
             }
         }
 
