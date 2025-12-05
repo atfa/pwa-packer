@@ -56,7 +56,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
+            /* justify-content: center;  <-- 已移除：这会导致内容溢出时顶部被裁剪 */
             padding: 1rem;
             /* 允许内容在容器内部垂直滚动，但不影响整体页面 */
             overflow-y: auto;
@@ -71,7 +71,8 @@
         .content-wrapper {
             width: 100%;
             max-width: 28rem; /* max-w-md */
-            margin: auto 0;
+            /* margin: auto 0; 实现了“内容少时居中，内容多时顶对齐”的智能效果 */
+            margin: auto 0; 
         }
 
         /* 标题 */
@@ -310,7 +311,7 @@
     <!-- 引导界面容器 -->
     <div id="setup-container">
         <div class="content-wrapper">
-            <h1>Web to App</h1>
+            <h1>PWA HTML Loader</h1>
 
             <!-- 新位置：标题下方的徽标 -->
             <div class="header-meta">
@@ -438,6 +439,9 @@
                     })
                     .catch(console.error);
             }
+
+            // 强制滚动到顶部，确保内容从头开始显示
+            ELEMENTS.setupContainer.scrollTop = 0;
         }
 
         ELEMENTS.iconUpload.addEventListener('change', async (e) => {
