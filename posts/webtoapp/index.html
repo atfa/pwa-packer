@@ -33,29 +33,34 @@
             height: 100%; 
             margin: 0; 
             padding: 0; 
-            overflow: hidden; 
+            overflow: hidden; /* 核心：禁止滚动 */
             background: #000000; 
             color: var(--text-main); 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             -webkit-tap-highlight-color: transparent;
-            /* 进一步防止触摸手势缩放 */
             touch-action: manipulation; 
             -webkit-text-size-adjust: 100%;
+            /* 核心：禁止橡皮筋回弹效果 */
+            overscroll-behavior: none;
         }
 
-        /* 布局容器 */
+        /* 布局容器 - 改用 Fixed Inset 布局，钉死在屏幕上 */
         #setup-container {
-            position: relative;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
             z-index: 20;
             background: var(--bg-color);
-            width: 100%;
-            height: 100%;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             padding: 1rem;
+            /* 允许内容在容器内部垂直滚动，但不影响整体页面 */
             overflow-y: auto;
+            overflow-x: hidden; 
             /* Safe Area */
             padding-top: max(1rem, env(safe-area-inset-top));
             padding-bottom: max(1rem, env(safe-area-inset-bottom));
@@ -86,6 +91,7 @@
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); 
             margin-bottom: 1.25rem; 
             transition: opacity 0.3s; 
+            width: 100%; /* 确保不超过父容器 */
         }
 
         .step-title {
@@ -142,10 +148,10 @@
         #icon-preview span { font-size: 0.75rem; color: #6b7280; }
         #icon-preview img { width: 100%; height: 100%; object-fit: cover; }
 
-        /* 自定义文件上传按钮样式 */
         input[type="file"] {
             font-size: 0.875rem;
             color: var(--text-muted);
+            max-width: 100%; /* 防止溢出 */
         }
         input[type="file"]::file-selector-button {
             margin-right: 1rem;
@@ -175,8 +181,6 @@
         }
         .install-list li { margin-bottom: 0.5rem; }
         
-        /* 删除了 icon-share 样式 */
-
         /* Step 3: 分隔线 */
         .divider {
             position: relative;
@@ -261,13 +265,15 @@
             filter: grayscale(1);
         }
 
-        /* Iframe */
+        /* Iframe - 钉死在屏幕上 */
         #app-frame { 
             position: fixed;
             top: 0;
             left: 0;
-            width: 100vw;
-            height: 100dvh; 
+            right: 0;
+            bottom: 0;
+            width: 100%;
+            height: 100%; 
             border: none; 
             display: none; 
             background: #000; 
@@ -304,7 +310,6 @@
                 </h2>
                 <p class="desc-text">图标已准备就绪。现在请将此页面添加到主屏幕。</p>
                 <ul class="install-list">
-                    <!-- 已移除 SVG 分享图标 -->
                     <li><strong>iOS (Safari):</strong> 点击分享按钮 -> "添加到主屏幕"。</li>
                     <li><strong>Android (Chrome):</strong> 点击菜单 -> "安装应用" 或 "添加到主屏幕"。</li>
                 </ul>
