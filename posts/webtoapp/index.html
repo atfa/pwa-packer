@@ -5,12 +5,16 @@
     <!-- 禁止缩放核心设置 -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     
+    <!-- iOS PWA 核心配置 (Meta 标签优先级高于 Manifest 失败时) -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Web to App">
     
     <title>Web to App</title>
     
+    <!-- 默认图标占位符 -->
     <link rel="apple-touch-icon" id="apple-icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==">
+    <!-- Manifest 占位符 -->
     <link rel="manifest" id="manifest-link" href="data:application/manifest+json,{}">
 
     <style>
@@ -451,27 +455,37 @@
             const base64 = await readFileAsBase64(file);
             ELEMENTS.iconPreview.innerHTML = `<img src="${base64}">`;
             
-            const icon192 = await resizeImage(base64, 192);
+            // 恢复生成 512px 图标
             const icon512 = await resizeImage(base64, 512);
+            // 同时也生成 192px 用于 manifest
+            const icon192 = await resizeImage(base64, 192);
 
-            ELEMENTS.appleIcon.href = icon192;
+            // 【关键策略】
+            // iOS 使用 apple-touch-icon，我们给它最高清的 512px 图标
+            ELEMENTS.appleIcon.href = icon512;
 
+            // Manifest (Android) 
+            // 仅使用 192px 图标，防止 Base64 字符串过长导致 iOS 系统解析器崩溃
             const manifest = {
-                name: "My Custom App",
-                short_name: "MyApp",
-                start_url: "./index.html",
+                name: "Web to App",
+                short_name: "Web2App",
+                start_url: "index.html",
                 display: "standalone",
                 background_color: "#000000",
                 theme_color: "#000000",
                 orientation: "portrait",
+                scope: ".",
                 icons: [
-                    { src: icon192, sizes: "192x192", type: "image/png" },
-                    { src: icon512, sizes: "512x512", type: "image/png" }
+                    { src: icon192, sizes: "192x192", type: "image/png" }
                 ]
             };
-
-            const manifestBlob = new Blob([JSON.stringify(manifest)], {type: 'application/manifest+json'});
-            ELEMENTS.manifestLink.href = URL.createObjectURL(manifestBlob);
+            // const manifestBlob = new Blob([JSON.stringify(manifest)], {type: 'application/manifest+json'});
+            // ELEMENTS.manifestLink.href = URL.createObjectURL(manifestBlob);
+            const stringManifest = JSON.stringify(manifest);
+            const base64Manifest = btoa(unescape(encodeURIComponent(stringManifest)));
+            const dataUri = `data:application/manifest+json;base64,${base64Manifest}`;
+            
+            ELEMENTS.manifestLink.href = dataUri;
 
             if (!isStandalone) {
                 setTimeout(() => {
