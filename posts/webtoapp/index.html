@@ -15,7 +15,7 @@
     <!-- 默认图标占位符 -->
     <link rel="apple-touch-icon" id="apple-icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==">
     <!-- Manifest 占位符 -->
-    <link rel="manifest" id="manifest-link" href="data:application/manifest+json,{}">
+    <link rel="manifest" id="manifest-link" href="/manifest.json">
 
     <style>
         :root {
@@ -481,11 +481,11 @@
             };
             // const manifestBlob = new Blob([JSON.stringify(manifest)], {type: 'application/manifest+json'});
             // ELEMENTS.manifestLink.href = URL.createObjectURL(manifestBlob);
-            const stringManifest = JSON.stringify(manifest);
-            const base64Manifest = btoa(unescape(encodeURIComponent(stringManifest)));
-            const dataUri = `data:application/manifest+json;base64,${base64Manifest}`;
+            // const stringManifest = JSON.stringify(manifest);
+            // const base64Manifest = btoa(unescape(encodeURIComponent(stringManifest)));
+            // const dataUri = `data:application/manifest+json;base64,${base64Manifest}`;
             
-            ELEMENTS.manifestLink.href = dataUri;
+            // ELEMENTS.manifestLink.href = dataUri;
 
             if (!isStandalone) {
                 setTimeout(() => {

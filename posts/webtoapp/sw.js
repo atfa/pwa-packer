@@ -1,4 +1,4 @@
-const CACHE_NAME = 'html-loader-pwa-v11';
+const CACHE_NAME = 'html-loader-pwa-v12';
 const ASSETS = [
     './',
     './index.html'
