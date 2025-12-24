@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reveal.js to PPTX</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* === UI 样式 === */
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; background: #f3f4f6; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        
+        main { flex: 1; display: flex; flex-direction: column; overflow: hidden; } 
+        @media (min-width: 1024px) { main { flex-direction: row; } }
+
+        header { background: white; border-bottom: 1px solid #e5e7eb; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 2px rgba(0,0,0,0.05); z-index: 10; flex-shrink: 0; }
+        .logo-area { display: flex; align-items: center; gap: 8px; }
+        .logo-box { width: 32px; height: 32px; background: #be123c; border-radius: 6px; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+        .btn { padding: 8px 14px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; display: flex; align-items: center; gap: 6px; transition: all 0.2s; white-space: nowrap; }
+        .btn-secondary { background: #e5e7eb; color: #374151; }
+        .btn-primary { background: #be123c; color: white; }
+        .btn:disabled { opacity: 0.5; cursor: wait; }
+        
+        .select-mode { padding: 8px 12px; border-radius: 6px; font-size: 13px; border: 1px solid #d1d5db; background-color: #f9fafb; color: #374151; outline: none; cursor: pointer; min-width: 140px; }
+        
+        .preview-pane { background: #e5e5e5; display: flex; flex-direction: column; position: relative; order: 1; height: 45vh; border-bottom: 1px solid #ddd; z-index: 5; }
+        @media (min-width: 1024px) { .preview-pane { width: 50%; order: 2; height: auto; border-bottom: none; border-left: 1px solid #ddd; } }
+        
+        .preview-header { padding: 6px 16px; background: white; border-bottom: 1px solid #e5e7eb; color: #6b7280; font-size: 11px; flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; }
+        .preview-content { flex: 1; padding: 20px; display: flex; justify-content: center; align-items: center; overflow: hidden; background-color: #525252; position: relative; }
+        
+        .editor-pane { background: #1e1e1e; display: flex; flex-direction: column; order: 2; flex: 1; min-height: 0; }
+        @media (min-width: 1024px) { .editor-pane { width: 50%; order: 1; } }
+        .editor-header { padding: 6px 16px; background: #2d2d2d; color: #9ca3af; font-size: 11px; border-bottom: 1px solid #000; display: flex; justify-content: space-between; flex-shrink: 0; }
+        .code-editor { flex: 1; width: 100%; padding: 16px; background: #1e1e1e; color: #d4d4d4; font-family: 'Menlo', 'Monaco', 'Courier New', monospace; font-size: 13px; line-height: 1.5; border: none; resize: none; outline: none; }
+        
+        #previewContainer { background: white; box-shadow: 0 0 40px rgba(0,0,0,0.5); overflow: hidden; transform-origin: center center; flex-shrink: 0; }
+        
+        #processingOverlay { position: absolute; inset: 0; background: rgba(0,0,0,0.85); z-index: 50; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; opacity: 0; pointer-events: none; transition: opacity 0.2s; backdrop-filter: blur(2px); }
+        #processingOverlay.active { opacity: 1; pointer-events: auto; }
+        .spinner { width: 36px; height: 36px; border: 3px solid #ffffff; border-bottom-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 12px; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        
+        .error-box { max-width: 90%; padding: 12px; background: #7f1d1d; border: 1px solid #ef4444; border-radius: 6px; color: #fecaca; margin-top: 10px; font-family: monospace; font-size: 11px; white-space: pre-wrap; display: none; word-break: break-all; text-align: left; }
+    </style>
+    <!-- 引入 FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <header>
+        <div class="logo-area">
+            <div class="logo-box">R</div>
+            <div style="line-height: 1.2;">
+                <h1 style="font-size: 16px; font-weight: 600; color: #1f2937;">Reveal to PPTX</h1>
+                <span style="font-size: 10px; color: #6b7280;"><a href="https://xhslink.com/m/60Qf1i6PapL" target="_blank" class="xhs-link">小红书@生活自动挡</a></span>
+            </div>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center;">
+            <select id="exportMode" class="select-mode">
+                <option value="snapshot-only">📸 整页截图</option>
+                <option value="layered-image">🧩 元素分层 (推荐)</option>
+                <option value="text-editable">📝 文字可编辑</option>
+            </select>
+            <button onclick="renderPreview()" class="btn btn-secondary">
+                <i class="fa-solid fa-rotate-right"></i> <span class="hidden sm:inline">刷新</span>
+            </button>
+            <button id="exportBtn" onclick="triggerExport()" class="btn btn-primary">
+                <i class="fa-solid fa-file-export"></i> <span>导出</span>
+            </button>
+        </div>
+    </header>
+
+    <main>
+        <div class="preview-pane">
+            <div class="preview-header">
+                <span>1280x720 Canvas</span>
+                <span id="resInfo" style="color: #9ca3af;">Scale: 1.0</span>
+            </div>
+            <div class="preview-content">
+                <div id="previewContainer" style="width: 1280px; height: 720px;">
+                    <iframe id="previewFrame" style="width: 100%; height: 100%; border: 0; background: white;"></iframe>
+                </div>
+                
+                <div id="processingOverlay">
+                    <div id="loadingSpinner" class="spinner"></div>
+                    <h3 id="statusTitle" style="font-size: 16px; font-weight: bold; margin-bottom: 4px;">正在导出...</h3>
+                    <p id="progressText" style="color: #d1d5db; font-size: 12px;">分析 DOM 结构</p>
+                    <div id="errorLog" class="error-box"></div>
+                    <button id="closeOverlayBtn" onclick="hideOverlay()" class="btn btn-secondary" style="margin-top: 16px; display: none;">关闭</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="editor-pane">
+            <div class="editor-header">
+                <span>HTML Code</span>
+                <span>支持纯 HTML 模式</span>
+            </div>
+            <textarea id="htmlInput" class="code-editor" spellcheck="false"></textarea>
+        </div>
+    </main>
+
+    <script>
+const DEFAULT_TEMPLATE = `<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reveal.js v29.0</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/black.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg-deep: #0f172a; --text-primary: #f8fafc; }
+        html, body, .reveal, .reveal-viewport { background-color: var(--bg-deep) !important; color: var(--text-primary); }
+        body { font-family: 'Inter', sans-serif; overflow: hidden; margin: 0; }
+
+        .reveal-viewport::before {
+            content: ""; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-image: radial-gradient(circle at 50% 50%, rgba(168, 85, 247, 0.2), transparent 70%);
+            z-index: 0; pointer-events: none;
+        }
+
+        .card {
+            background: rgba(255,255,255,0.1);
+            padding: 40px;
+            border-radius: 16px;
+            border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: 0 0 40px rgba(0,0,0,0.5);
+            margin: 40px auto;
+            max-width: 600px;
+            position: relative;
+        }
+        
+        .tag {
+            background: #f43f5e;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 4px;
+            display: inline-block;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="reveal">
+        <div class="slides">
+            <section>
+                <h1>v29.0 彻底去重</h1>
+                <div class="card">
+                    <p>这个卡片包含 <span class="tag">红色标签</span>。</p>
+                    <p style="margin-top: 20px; color: #94a3b8;">
+                        旧版本中，标签既在卡片背景里，又单独导出，导致重叠。<br>
+                        新版本在截图卡片时，会<b>无差别隐藏所有子元素</b>，确保背景纯净。
+                    </p>
+                </div>
+            </section>
+        </div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.js"><\/script>
+    <script>
+        Reveal.initialize({ center: true, hash: false });
+    <\/script>
+</body>
+</html>`;
+
+        const htmlInput = document.getElementById('htmlInput');
+        htmlInput.value = DEFAULT_TEMPLATE;
+        
+        function fitPreview() {
+            const container = document.getElementById('previewContainer');
+            const parent = container.parentElement;
+            const availW = parent.clientWidth - 20;
+            const availH = parent.clientHeight - 20;
+            const scale = Math.min(availW / 1280, availH / 720);
+            container.style.transform = `scale(${Math.min(scale, 1)})`;
+            document.getElementById('resInfo').innerText = `Scale: ${Math.min(scale, 1).toFixed(2)}`;
+        }
+        window.addEventListener('resize', fitPreview);
+        window.addEventListener('DOMContentLoaded', () => {
+            renderPreview();
+            setTimeout(fitPreview, 100);
+        });
+
+        const overlay = document.getElementById('processingOverlay');
+        const spinner = document.getElementById('loadingSpinner');
+        const statusTitle = document.getElementById('statusTitle');
+        const progressText = document.getElementById('progressText');
+        const errorLog = document.getElementById('errorLog');
+        const closeBtn = document.getElementById('closeOverlayBtn');
+
+        function showOverlay() {
+            overlay.classList.add('active');
+            spinner.style.display = 'block';
+            statusTitle.innerText = '正在处理...';
+            statusTitle.style.color = 'white';
+            errorLog.style.display = 'none';
+            closeBtn.style.display = 'none';
+        }
+
+        function hideOverlay() {
+            overlay.classList.remove('active');
+            document.getElementById('exportBtn').disabled = false;
+        }
+
+        function showError(msg) {
+            spinner.style.display = 'none';
+            statusTitle.innerText = '导出中断';
+            statusTitle.style.color = '#fca5a5';
+            progressText.innerText = '失败详情：';
+            errorLog.innerText = msg;
+            errorLog.style.display = 'block';
+            closeBtn.style.display = 'inline-block';
+        }
+
+        function renderPreview() {
+            let rawHtml = htmlInput.value;
+            const previewFrame = document.getElementById('previewFrame');
+
+            if (!rawHtml.includes('<html') && !rawHtml.includes('class="reveal"')) {
+                const WRAPPER_START = `<!doctype html><html><head><meta charset="utf-8"><title>Reveal</title><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/black.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"></head><body><div class="reveal"><div class="slides">`;
+                const WRAPPER_END = `</div></div><script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.js"><\/script><script>Reveal.initialize({center:true,hash:false});<\/script></body></html>`;
+                rawHtml = WRAPPER_START + rawHtml + WRAPPER_END;
+            }
+
+            const historyPatch = `<script>
+                try { window.history.pushState = function(){}; window.history.replaceState = function(){}; } catch(e) {}
+            <\/script>`;
+            
+            if (rawHtml.includes('<head>')) {
+                rawHtml = rawHtml.replace('<head>', '<head>' + historyPatch);
+            } else {
+                rawHtml = '<html><head>' + historyPatch + '</head>' + rawHtml + '</html>';
+            }
+            
+            const injectionScript = `
+                <style>
+                    .reveal .controls, .reveal .progress { display: none !important; }
+                    .ppt-hollow-mode * { opacity: 0 !important; pointer-events: none !important; }
+                    .ppt-hollow-mode, .ppt-hollow-mode body, .ppt-hollow-mode .reveal, .ppt-hollow-mode .reveal-viewport { opacity: 1 !important; }
+                </style>
+                <script>
+                    // === 导出模式枚举 ===
+                    const EXPORT_MODE = {
+                        SNAPSHOT_ONLY: 'snapshot-only',   // 整页截图
+                        LAYERED_IMAGE: 'layered-image',   // 分层截图
+                        TEXT_EDITABLE: 'text-editable',   // 文字可编辑
+                    };
+                    window.onerror = function(msg, url, line) {
+                        window.parent.postMessage({ type: 'EXPORT_ERROR', error: msg }, '*');
+                    };
+
+                    function loadScript(url) {
+                        return new Promise((resolve, reject) => {
+                            if (document.querySelector('script[src="' + url + '"]')) return resolve();
+                            const script = document.createElement('script');
+                            script.src = url;
+                            script.onload = resolve;
+                            script.onerror = () => reject(new Error('Failed to load: ' + url));
+                            document.head.appendChild(script);
+                        });
+                    }
+
+                    const LIBS = {
+                        htmlToImage: 'https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.min.js',
+                        pptxGen: 'https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js'
+                    };
+
+                    window.addEventListener('message', async (event) => {
+                        if (event.data.type === 'START_EXPORT') {
+                            try {
+                                window.parent.postMessage({ type: 'EXPORT_STATUS', msg: '正在下载核心库...' }, '*');
+                                if (typeof htmlToImage === 'undefined') await loadScript(LIBS.htmlToImage);
+                                if (typeof PptxGenJS === 'undefined') await loadScript(LIBS.pptxGen);
+                                
+                                if (typeof PptxGenJS === 'undefined' || typeof htmlToImage === 'undefined') {
+                                    throw new Error("库加载失败，请检查网络。");
+                                }
+
+                                window.parent.postMessage({ type: 'EXPORT_STATUS', msg: '收集页面样式...' }, '*');
+                                const cssText = await collectPageStyles();
+
+                                window.parent.postMessage({ type: 'EXPORT_STATUS', msg: '依赖就绪，开始分析...' }, '*');
+                                await startHybridExport(event.data.exportMode, cssText);
+                            } catch(e) {
+                                console.error(e);
+                                window.parent.postMessage({ type: 'EXPORT_ERROR', error: e.message || JSON.stringify(e) }, '*');
+                            }
+                        }
+                    });
+
+                    async function collectPageStyles() {
+                        let combinedCSS = '';
+                        const links = Array.from(document.querySelectorAll('link[rel="stylesheet"]'));
+                        for (const link of links) {
+                            try {
+                                if(link.href) {
+                                    const res = await fetch(link.href);
+                                    const text = await res.text();
+                                    combinedCSS += text + '\\n';
+                                }
+                            } catch(e) { console.warn('CSS fetch failed:', link.href); }
+                        }
+                        const styles = Array.from(document.querySelectorAll('style'));
+                        styles.forEach(s => combinedCSS += s.innerHTML + '\\n');
+                        return combinedCSS;
+                    }
+
+                    // Canvas 绘图辅助
+                    async function iconToDataURL(node) {
+                        // 1. 等待字体加载
+                        await document.fonts.ready;
+                        
+                        return new Promise((resolve) => {
+                            const style = window.getComputedStyle(node);
+                            const beforeStyle = window.getComputedStyle(node, '::before');
+                            const content = beforeStyle.content;
+                            
+                            if (!content || content === 'none' || content === '""') return resolve(null);
+                            
+                            const iconChar = content.replace(/['"]/g, '');
+                            const fontSize = parseFloat(style.fontSize);
+                            const canvas = document.createElement('canvas');
+                            const scale = 3; 
+                            
+                            const w = (parseFloat(style.width) || fontSize);
+                            const h = (parseFloat(style.height) || fontSize);
+                            const padding = 10;
+                            canvas.width = (w + padding * 2) * scale; 
+                            canvas.height = (h + padding * 2) * scale; 
+                            
+                            const ctx = canvas.getContext('2d');
+                            ctx.scale(scale, scale);
+                            
+                            // 强制指定 FA 字体
+                            const fontFamily = style.fontFamily.includes('Font Awesome') ? style.fontFamily : '"Font Awesome 6 Free", "Font Awesome 6 Brands", ' + style.fontFamily;
+                            ctx.font = \`\${style.fontWeight} \${fontSize}px \${fontFamily}\`;
+                            
+                            ctx.fillStyle = style.color;
+                            ctx.textBaseline = 'middle';
+                            ctx.textAlign = 'center';
+                            
+                            const centerX = (canvas.width / scale) / 2;
+                            const centerY = (canvas.height / scale) / 2;
+                            ctx.fillText(iconChar, centerX, centerY);
+                            
+                            resolve(canvas.toDataURL('image/png'));
+                        });
+                    }
+
+                    function getShadowPadding(node) {
+                        const style = window.getComputedStyle(node);
+                        const shadow = style.boxShadow;
+                        if (!shadow || shadow === 'none') return 0;
+                        const matches = shadow.match(/(-?\\d+px)/g);
+                        let maxVal = 0;
+                        if(matches) {
+                            matches.forEach(m => {
+                                const val = Math.abs(parseFloat(m));
+                                if(val > maxVal) maxVal = val;
+                            });
+                        }
+                        return maxVal + 10; 
+                    }
+                    // === 整页截图导出 ===
+                    async function exportSnapshotOnly(pptSlide, globalCSS) {
+                        const target = document.querySelector('.reveal') || document.body;
+                        try {
+                            const imgData = await htmlToImage.toPng(target, { width: 1280, height: 720, pixelRatio: 2, fontEmbedCSS: globalCSS, style: { margin: 0 } });
+                            pptSlide.addImage({ data: imgData, x: 0, y: 0, w: "100%", h: "100%" });
+                        } catch (e) {}
+                    }
+
+                    async function startHybridExport(exportMode, globalCSS) {
+                        const pres = new PptxGenJS();
+                        pres.layout = 'LAYOUT_16x9'; 
+                        const PPT_HEIGHT_PTS = 5.625 * 72;
+                        
+                        function rgbToHex(rgb) {
+                            if (!rgb || rgb === 'transparent') return null;
+                            if (rgb.startsWith('#')) return rgb;
+                            const res = rgb.match(/\\d+/g);
+                            if (!res) return null;
+                            return "#" + res.slice(0,3).map(x => parseInt(x).toString(16).padStart(2,'0')).join('');
+                        }
+                        function normalizeColor(colorStr) {
+                            if (!colorStr) return null;
+                            if (colorStr.startsWith('#')) return colorStr.substring(1);
+                            return colorStr;
+                        }
+
+                        function analyzeNode(node) {
+                            const style = window.getComputedStyle(node);
+                            if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return 'IGNORE';
+
+                            const tag = node.tagName.toLowerCase();
+                            
+                            // 1. 图标
+                            if (tag === 'img' || tag === 'svg' || tag === 'video' || tag === 'canvas') return 'ICON';
+                            if (node.classList && Array.from(node.classList).some(c => c === 'fa' || c.startsWith('fa-'))) return 'ICON';
+                            const before = window.getComputedStyle(node, '::before').content;
+                            if (before && before !== 'none' && before !== '""' && (tag === 'i' || tag === 'span')) return 'ICON';
+
+                            // 2. 强制图片 (如渐变文字)
+                            if (style.webkitBackgroundClip === 'text' || style.backgroundClip === 'text') {
+                                if (style.backgroundImage !== 'none') return 'SNAPSHOT_IMAGE';
+                            }
+
+                            // 3. 文本块
+                            const blockTags = ['DIV', 'P', 'SECTION', 'UL', 'OL', 'LI', 'TABLE', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'BLOCKQUOTE'];
+                            const hasBlockChildren = Array.from(node.children).some(child => blockTags.includes(child.tagName));
+                            if (!hasBlockChildren && node.innerText.trim().length > 0) return 'RICH_TEXT';
+
+                            // 4. 容器
+                            const hasBg = style.backgroundColor !== 'rgba(0, 0, 0, 0)' && style.backgroundColor !== 'transparent';
+                            const hasBorder = style.borderWidth !== '0px' && style.borderStyle !== 'none';
+                            const hasShadow = style.boxShadow !== 'none';
+                            const hasBgImg = style.backgroundImage !== 'none';
+                            if (hasBg || hasBorder || hasShadow || hasBgImg) return 'CONTAINER';
+
+                            return 'IGNORE';
+                        }
+
+                        function getRichTextRuns(rootNode) {
+                            let runs = [];
+                            function traverse(node, currentStyle) {
+                                if (node.nodeType === 3) { 
+                                    let text = node.nodeValue;
+                                    // 1. 替换 &nbsp;
+                                    text = text.replace(/\u00A0/g, ' ');
+                                    // 3. 去掉零宽空格
+                                    text = text.replace(/\u200B/g, '');
+                                    // 4. trim 开头和结尾
+                                    text = text.trim();
+                                    if (text && text.length > 0) {
+                                        runs.push({
+                                            text: text,
+                                            options: {
+                                                color: normalizeColor(rgbToHex(currentStyle.color)),
+                                                fontSize: (parseFloat(currentStyle.fontSize) / 720) * PPT_HEIGHT_PTS,
+                                                bold: parseInt(currentStyle.fontWeight) >= 600 || currentStyle.fontWeight === 'bold',
+                                                italic: currentStyle.fontStyle === 'italic',
+                                                underline: currentStyle.textDecoration.includes('underline'),
+                                                highlight: (currentStyle.backgroundColor !== 'rgba(0, 0, 0, 0)' && currentStyle.backgroundColor !== 'transparent') 
+                                                    ? normalizeColor(rgbToHex(currentStyle.backgroundColor)) 
+                                                    : undefined
+                                            }
+                                        });
+                                    }
+                                } else if (node.nodeType === 1) { 
+                                    const style = window.getComputedStyle(node);
+                                    if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return;
+                                    node.childNodes.forEach(child => traverse(child, style));
+                                }
+                            }
+                            traverse(rootNode, window.getComputedStyle(rootNode));
+                            return runs;
+                        }
+
+                        // === v29: 无差别隐藏所有子元素 ===
+                        function hideAllChildren(node) {
+                            const hiddenNodes = [];
+                            // 只要是直接子元素，全部隐藏
+                            // 这样容器截图就只剩下容器自己的背景和边框
+                            Array.from(node.children).forEach(child => {
+                                if (child.style.opacity !== '0') {
+                                    child.dataset.pptOrigOpacity = child.style.opacity;
+                                    child.dataset.pptOrigVis = child.style.visibility;
+                                    // 强力隐藏
+                                    child.style.setProperty('opacity', '0', 'important');
+                                    child.style.setProperty('visibility', 'hidden', 'important');
+                                    hiddenNodes.push(child);
+                                }
+                            });
+                            
+                            // 同时也处理容器自身的文字 (直接文本节点)
+                            if (node.style.color !== 'transparent') {
+                                node.dataset.pptOrigColor = node.style.color;
+                                node.style.setProperty('color', 'transparent', 'important');
+                                hiddenNodes.push(node);
+                            }
+                            return hiddenNodes;
+                        }
+                        
+                        function restoreAllChildren(hiddenNodes) {
+                            hiddenNodes.forEach(child => {
+                                if (child.dataset.pptOrigOpacity !== undefined) {
+                                    child.style.opacity = child.dataset.pptOrigOpacity;
+                                    delete child.dataset.pptOrigOpacity;
+                                }
+                                if (child.dataset.pptOrigVis !== undefined) {
+                                    child.style.visibility = child.dataset.pptOrigVis;
+                                    delete child.dataset.pptOrigVis;
+                                }
+                                if (child.dataset.pptOrigColor !== undefined) {
+                                    child.style.color = child.dataset.pptOrigColor;
+                                    delete child.dataset.pptOrigColor;
+                                }
+                            });
+                        }
+
+                       async function captureGlobalHollowBackground() {
+                            // 1. 所有“内容层”的选择器（可以按你项目再补）
+                            const CONTENT_SELECTORS = [
+                                '.reveal .slides',
+                                '.reveal section',
+                                '.reveal .controls',
+                                '.reveal .progress',
+                                '.reveal .slide-number',
+                                '.reveal .speaker-notes',
+                            ];
+
+                            const hiddenList = [];
+
+                            // 2. 隐藏内容层（用 display:none，而不是 opacity）
+                            CONTENT_SELECTORS.forEach(selector => {
+                                document.querySelectorAll(selector).forEach(el => {
+                                    // 避免重复处理
+                                    if (el.dataset._pptHidden) return;
+
+                                    el.dataset._pptHidden = '1';
+                                    el.dataset._pptOrigDisplay = el.style.display;
+                                    el.style.display = 'none';
+                                    hiddenList.push(el);
+                                });
+                            });
+
+                            let bgData = null;
+
+                            try {
+                                // 3. 截整个 html，保证 html/body 背景被合成
+                                bgData = await htmlToImage.toPng(
+                                    document.documentElement, // <html>
+                                    {
+                                        width: 1280,
+                                        height: 720,
+                                        pixelRatio: 1.5,
+                                        skipFonts: true,
+                                        style: {
+                                        margin: 0,
+                                        transform: 'none',
+                                        },
+                                    }
+                                );
+                            } catch (e) {
+                                console.warn('[captureGlobalBackground] failed:', e);
+                            } finally {
+                                // 4. 还原现场
+                                hiddenList.forEach(el => {
+                                    el.style.display = el.dataset._pptOrigDisplay || '';
+                                    delete el.dataset._pptOrigDisplay;
+                                    delete el.dataset._pptHidden;
+                                });
+                            }
+
+                            return bgData;
+                        };
+
+                        let slides = [];
+                        let mode = "DOM";
+                        if (typeof Reveal !== 'undefined' && Reveal.isReady()) {
+                            mode = "API";
+                            const total = Reveal.getTotalSlides();
+                            for(let i=0; i<total; i++) slides.push(i);
+                        } else {
+                            mode = "DOM";
+                            let domSlides = document.querySelectorAll('.reveal .slides > section');
+                            if (domSlides.length === 0) domSlides = document.querySelectorAll('body > section, section');
+                            if(domSlides.length === 0) throw new Error("未找到幻灯片。");
+                            slides = Array.from(domSlides);
+                        }
+                        
+                        for (let i = 0; i < slides.length; i++) {
+                            window.parent.postMessage({ type: 'EXPORT_PROGRESS', current: i + 1, total: slides.length }, '*');
+                            
+                            if (mode === "API") {
+                                Reveal.slide(i);
+                                await new Promise(r => setTimeout(r, 800)); 
+                            } else {
+                                const allSlides = document.querySelectorAll('section');
+                                allSlides.forEach(s => { s.style.display = 'none'; s.classList.remove('present'); });
+                                const current = slides[i];
+                                current.style.display = 'block';
+                                current.classList.add('present');
+                                if (!current.closest('.slides')) { current.style.height = '100vh'; current.style.boxSizing = 'border-box'; }
+                                await new Promise(r => setTimeout(r, 100));
+                            }
+                            await document.fonts.ready;
+
+                            let currentSlide = (mode === "API") ? Reveal.getCurrentSlide() : slides[i];
+                            const viewportW = 1280; 
+                            const viewportH = 720;
+
+                            const pptSlide = pres.addSlide();
+
+                            console.log('Processing slide', i + 1);
+                            // === 模式一：整页截图 ===
+                            if (exportMode === 'snapshot-only') {
+                                await exportSnapshotOnly(pptSlide, globalCSS);
+                                continue;
+                            //     const target = document.querySelector('.reveal') || document.body;
+                            //     try {
+                            //         const imgData = await htmlToImage.toPng(target, { width: 1280, height: 720, pixelRatio: 2, fontEmbedCSS: globalCSS, style: { margin: 0 }});
+                            //         pptSlide.addImage({ data: imgData, x: 0, y: 0, w: "100%", h: "100%" });
+                            //     } catch(e) {}
+                            //     continue; 
+                            }
+
+                            // === 模式二/三：分层/可编辑 ===
+
+                            // 1. 背景
+                            const hollowBgData = await captureGlobalHollowBackground();
+                            if (hollowBgData) {
+                                pptSlide.addImage({ data: hollowBgData, x: 0, y: 0, w: "100%", h: "100%" });
+                            } else {
+                                pptSlide.background = { color: "FFFFFF" };
+                            }
+
+                            const allNodes = Array.from(currentSlide.querySelectorAll('*'));
+                            const processedNodes = new Set(); 
+                            const nodeAnalysis = new Map();
+                            allNodes.forEach(node => nodeAnalysis.set(node, analyzeNode(node)));
+
+                            for (const node of allNodes) {
+                                if (processedNodes.has(node)) continue;
+
+                                const type = nodeAnalysis.get(node);
+                                if (type === 'IGNORE') continue;
+
+                                const rect = node.getBoundingClientRect();
+                                if (rect.width === 0 || rect.height === 0) continue;
+
+                                let x = (rect.left / viewportW * 100);
+                                let y = (rect.top / viewportH * 100);
+                                let w = (rect.width / viewportW * 100);
+                                let h = (rect.height / viewportH * 100);
+
+                                if (x > 100 || y > 100) continue;
+
+                                // CONTAINER
+                                if (type === 'CONTAINER') {
+                                    // v29: 隐藏所有一级子元素
+                                    const hiddenNodes = hideAllChildren(node);
+                                    try {
+                                        const PADDING = getShadowPadding(node);
+                                        const scaleFactor = rect.width / node.offsetWidth;
+                                        const PAD_VISUAL = PADDING * scaleFactor;
+                                        const PAD_PCT_W = (PAD_VISUAL / viewportW) * 100;
+                                        const PAD_PCT_H = (PAD_VISUAL / viewportH) * 100;
+                                        
+                                        const cs = window.getComputedStyle(node);
+
+                                        const imgData = await htmlToImage.toPng(node, { 
+                                            cacheBust: true, pixelRatio: 2, skipFonts: true, 
+                                            width: node.offsetWidth + (PADDING * 2) + 2, 
+                                            height: node.offsetHeight + (PADDING * 2), 
+                                            style: { 
+                                                transform: 'translate(' + PADDING + 'px, ' + PADDING + 'px)',
+                                                margin: 0,
+                                                width: (node.offsetWidth + 1) + 'px',
+                                                height: node.offsetHeight + 'px',
+                                                boxSizing: 'border-box',
+                                                maxWidth: 'none', minWidth: 'none',
+                                                backgroundColor: cs.backgroundColor,
+                                                backgroundImage: cs.backgroundImage,
+                                                border: cs.border,
+                                                borderRadius: cs.borderRadius,
+                                                boxShadow: cs.boxShadow,
+                                                // v29: 增加一点右侧内边距防止边缘裁剪
+                                                paddingRight: '1px' 
+                                            }
+                                        });
+                                        
+                                        pptSlide.addImage({ data: imgData, x: (x - PAD_PCT_W) + "%", y: (y - PAD_PCT_H) + "%", w: (w + (PAD_PCT_W * 2)) + "%", h: (h + (PAD_PCT_H * 2)) + "%" });
+                                    } catch(e) {}
+                                    restoreAllChildren(hiddenNodes);
+                                }
+                                // ICON & SNAPSHOT_IMAGE
+                                else if (type === 'ICON' || type === 'SNAPSHOT_IMAGE') {
+                                    node.querySelectorAll('*').forEach(child => processedNodes.add(child));
+                                    
+                                    try {
+                                        let imgData = null;
+                                        if (type === 'ICON') imgData = await iconToDataURL(node);
+                                        
+                                        if (!imgData) {
+                                            const scaleFactor = rect.width / node.offsetWidth;
+                                            const P = 5; 
+                                            const P_VIS = P * scaleFactor;
+                                            const PAD_PCT_W = (P_VIS / viewportW) * 100;
+                                            const PAD_PCT_H = (P_VIS / viewportH) * 100;
+
+                                            imgData = await htmlToImage.toPng(node, {
+                                                cacheBust: true, pixelRatio: 3, fontEmbedCSS: globalCSS,
+                                                width: node.offsetWidth + (P*2),
+                                                height: node.offsetHeight + (P*2),
+                                                style: { 
+                                                    visibility: 'visible', display: 'inline-block',
+                                                    margin: 0, transform: 'translate('+P+'px, '+P+'px)',
+                                                    boxSizing: 'border-box'
+                                                }
+                                            });
+                                            pptSlide.addImage({ data: imgData, x: (x - PAD_PCT_W)+"%", y: (y - PAD_PCT_H)+"%", w: (w + PAD_PCT_W*2)+"%", h: (h + PAD_PCT_H*2)+"%" });
+                                        } else {
+                                            pptSlide.addImage({ data: imgData, x: x+"%", y: y+"%", w: w+"%", h: h+"%" });
+                                        }
+                                    } catch(e) {}
+                                }
+                                // RICH_TEXT
+                                else if (type === 'RICH_TEXT') {
+                                    node.querySelectorAll('*').forEach(child => processedNodes.add(child));
+                                    
+                                    if (exportMode === 'layered-image') {
+                                        try {
+                                            const scaleFactor = rect.width / node.offsetWidth;
+                                            const fontSize = parseFloat(window.getComputedStyle(node).fontSize);
+                                            const ratio = fontSize < 20 ? 3 : 2; 
+                                            const P = 5; 
+                                            const P_VIS = P * scaleFactor;
+                                            const PAD_PCT_W = (P_VIS / viewportW) * 100;
+                                            const PAD_PCT_H = (P_VIS / viewportH) * 100;
+
+                                            const imgData = await htmlToImage.toPng(node, { 
+                                                cacheBust: true, pixelRatio: ratio, fontEmbedCSS: globalCSS, 
+                                                width: node.offsetWidth + (P * 2) + 2, 
+                                                height: node.offsetHeight + (P * 2),
+                                                style: { margin: 0, transform: 'translate(' + P + 'px, ' + P + 'px)', width: (node.offsetWidth + 1) + 'px', height: node.offsetHeight + 'px', boxSizing: 'border-box' } 
+                                            });
+                                            
+                                            pptSlide.addImage({ data: imgData, x: (x - PAD_PCT_W) + "%", y: (y - PAD_PCT_H) + "%", w: (w + (PAD_PCT_W * 2)) + "%", h: (h + (PAD_PCT_H * 2)) + "%" });
+                                        } catch(e) { console.warn("Text snap failed", e); }
+                                    
+                                    } else {
+                                        const textRuns = getRichTextRuns(node);
+                                        const parentStyle = window.getComputedStyle(node);
+                                        const alignMap = { 'left': 'left', 'center': 'center', 'right': 'right', 'justify': 'justify' };
+                                        const align = alignMap[parentStyle.textAlign] || 'left';
+                                        
+                                        pptSlide.addText(textRuns, {
+                                            x: x + "%", y: y + "%", w: w + "%", h: h + "%",
+                                            align: align, valign: "top", fontFace: "Arial", autoFit: true, margin: 0 
+                                        });
+                                    }
+                                }
+                            }
+                        }
+
+                        let suffix = exportMode === 'snapshot-only' ? 'Whole' : (exportMode === 'layered-image' ? 'Split' : 'Editable');
+                        pres.writeFile({ fileName: 'Reveal_' + suffix + '.pptx' });
+                        window.parent.postMessage({ type: 'EXPORT_COMPLETE' }, '*');
+                    }
+                <\/script>
+            `;
+
+            let finalHtml = rawHtml;
+            if (finalHtml.includes('</body>')) {
+                finalHtml = finalHtml.replace('</body>', injectionScript + '</body>');
+            } else {
+                finalHtml += injectionScript;
+            }
+
+            const blob = new Blob([finalHtml], { type: 'text/html' });
+            previewFrame.src = URL.createObjectURL(blob);
+        }
+
+            const exportBtn = document.getElementById('exportBtn');
+            const exportModeSelect = document.getElementById('exportMode');
+
+
+            function triggerExport() {
+                const iframe = document.getElementById('previewFrame');
+                if (!iframe.contentWindow) return;
+                showOverlay();
+                document.getElementById('exportBtn').disabled = true;
+                const mode = exportModeSelect.value;
+                iframe.contentWindow.postMessage({ type: 'START_EXPORT', exportMode: mode }, '*');
+            }
+
+        window.addEventListener('message', (event) => {
+            const data = event.data;
+            if (data.type === 'EXPORT_STATUS') {
+                 document.getElementById('progressText').innerText = data.msg;
+            }
+            if (data.type === 'EXPORT_PROGRESS') {
+                document.getElementById('progressText').innerText = `正在处理第 ${data.current} / ${data.total} 页...`;
+            }
+            if (data.type === 'EXPORT_COMPLETE') {
+                document.getElementById('statusTitle').innerText = '✅ 导出成功';
+                document.getElementById('loadingSpinner').style.display = 'none';
+                document.getElementById('closeOverlayBtn').style.display = 'inline-block';
+            }
+            if (data.type === 'EXPORT_ERROR') {
+                showError(data.error);
+            }
+        });
+    </script>
+</body>
+</html>
