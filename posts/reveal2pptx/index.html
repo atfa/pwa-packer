@@ -102,69 +102,7 @@
     </main>
 
     <script>
-const DEFAULT_TEMPLATE = `<!doctype html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reveal.js v29.0</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/black.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
-    <style>
-        :root { --bg-deep: #0f172a; --text-primary: #f8fafc; }
-        html, body, .reveal, .reveal-viewport { background-color: var(--bg-deep) !important; color: var(--text-primary); }
-        body { font-family: 'Inter', sans-serif; overflow: hidden; margin: 0; }
-
-        .reveal-viewport::before {
-            content: ""; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background-image: radial-gradient(circle at 50% 50%, rgba(168, 85, 247, 0.2), transparent 70%);
-            z-index: 0; pointer-events: none;
-        }
-
-        .card {
-            background: rgba(255,255,255,0.1);
-            padding: 40px;
-            border-radius: 16px;
-            border: 1px solid rgba(255,255,255,0.2);
-            box-shadow: 0 0 40px rgba(0,0,0,0.5);
-            margin: 40px auto;
-            max-width: 600px;
-            position: relative;
-        }
-        
-        .tag {
-            background: #f43f5e;
-            color: white;
-            padding: 4px 10px;
-            border-radius: 4px;
-            display: inline-block;
-            font-weight: bold;
-        }
-    </style>
-</head>
-<body>
-    <div class="reveal">
-        <div class="slides">
-            <section>
-                <h1>v29.0 彻底去重</h1>
-                <div class="card">
-                    <p>这个卡片包含 <span class="tag">红色标签</span>。</p>
-                    <p style="margin-top: 20px; color: #94a3b8;">
-                        旧版本中，标签既在卡片背景里，又单独导出，导致重叠。<br>
-                        新版本在截图卡片时，会<b>无差别隐藏所有子元素</b>，确保背景纯净。
-                    </p>
-                </div>
-            </section>
-        </div>
-    </div>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.js"><\/script>
-    <script>
-        Reveal.initialize({ center: true, hash: false });
-    <\/script>
-</body>
-</html>`;
+const DEFAULT_TEMPLATE = ``;
 
         const htmlInput = document.getElementById('htmlInput');
         htmlInput.value = DEFAULT_TEMPLATE;
