@@ -349,7 +349,7 @@ const DEFAULT_TEMPLATE = ``;
                             // 3. 文本块
                             const blockTags = ['DIV', 'P', 'SECTION', 'UL', 'OL', 'LI', 'TABLE', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'BLOCKQUOTE'];
                             const hasBlockChildren = Array.from(node.children).some(child => blockTags.includes(child.tagName));
-                            if (!hasBlockChildren && node.innerText.trim().length > 0) return 'RICH_TEXT';
+                            if (!hasBlockChildren && node.innerText && node.innerText.trim().length > 0) return 'RICH_TEXT';
 
                             // 4. 容器
                             const hasBg = style.backgroundColor !== 'rgba(0, 0, 0, 0)' && style.backgroundColor !== 'transparent';
