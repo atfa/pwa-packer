@@ -42,7 +42,6 @@
         
         .error-box { max-width: 90%; padding: 12px; background: #7f1d1d; border: 1px solid #ef4444; border-radius: 6px; color: #fecaca; margin-top: 10px; font-family: monospace; font-size: 11px; white-space: pre-wrap; display: none; word-break: break-all; text-align: left; }
     </style>
-    <!-- 引入 FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
 </head>
@@ -97,7 +96,7 @@
                 <span>HTML Code</span>
                 <span>支持纯 HTML 模式</span>
             </div>
-            <textarea id="htmlInput" class="code-editor" spellcheck="false"></textarea>
+            <textarea id="htmlInput" class="code-editor" spellcheck="false" placeholder="请在此处粘贴 Reveal.js 的 HTML 代码 (包含 <section> 等结构)...&#10;焦点离开编辑框后将自动刷新预览。"></textarea>
         </div>
     </main>
 
@@ -107,6 +106,16 @@ const DEFAULT_TEMPLATE = ``;
         const htmlInput = document.getElementById('htmlInput');
         htmlInput.value = DEFAULT_TEMPLATE;
         
+        // 修改点 3: 增加失去焦点自动刷新逻辑
+        let lastRenderedContent = DEFAULT_TEMPLATE;
+        htmlInput.addEventListener('blur', () => {
+            const currentContent = htmlInput.value.trim();
+            // 如果内容有变动，且不为空，则自动刷新
+            if (currentContent && currentContent !== lastRenderedContent) {
+                renderPreview();
+            }
+        });
+
         function fitPreview() {
             const container = document.getElementById('previewContainer');
             const parent = container.parentElement;
@@ -155,6 +164,9 @@ const DEFAULT_TEMPLATE = ``;
 
         function renderPreview() {
             let rawHtml = htmlInput.value;
+            // 更新最后渲染的内容记录，防止重复刷新
+            lastRenderedContent = rawHtml.trim();
+
             const previewFrame = document.getElementById('previewFrame');
 
             if (!rawHtml.includes('<html') && !rawHtml.includes('class="reveal"')) {
@@ -480,8 +492,8 @@ const DEFAULT_TEMPLATE = ``;
                                         pixelRatio: 1.5,
                                         skipFonts: true,
                                         style: {
-                                        margin: 0,
-                                        transform: 'none',
+                                            margin: 0,
+                                            transform: 'none',
                                         },
                                     }
                                 );
@@ -688,8 +700,16 @@ const DEFAULT_TEMPLATE = ``;
                             }
                         }
 
-                        let suffix = exportMode === 'snapshot-only' ? 'Whole' : (exportMode === 'layered-image' ? 'Split' : 'Editable');
-                        pres.writeFile({ fileName: 'Reveal_' + suffix + '.pptx' });
+                        // 修改点 1: 获取 HTML title 并处理文件名
+                        let cleanTitle = document.title.trim() || "Reveal_Presentation";
+                        // 将所有空白字符（空格、换行等）替换为下划线
+                        cleanTitle = cleanTitle.replace(/\s+/g, "_");
+                        
+                        let suffix = exportMode === 'snapshot-only' ? 'Snapshot' : (exportMode === 'layered-image' ? 'Split' : 'Editable');
+                        
+                        // 组合最终文件名
+                        pres.writeFile({ fileName: cleanTitle + '_' + suffix + '.pptx' });
+                        
                         window.parent.postMessage({ type: 'EXPORT_COMPLETE' }, '*');
                     }
                 <\/script>
