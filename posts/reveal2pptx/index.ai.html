@@ -1,0 +1,1167 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reveal.js to PPTX (AI Enhanced)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* === UI 样式 === */
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; background: #f3f4f6; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        
+        main { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; } 
+        @media (min-width: 1024px) { main { flex-direction: row; } }
+
+        header { background: white; border-bottom: 1px solid #e5e7eb; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 2px rgba(0,0,0,0.05); z-index: 20; flex-shrink: 0; }
+        .logo-area { display: flex; align-items: center; gap: 8px; }
+        .logo-box { width: 32px; height: 32px; background: #be123c; border-radius: 6px; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+        
+        .btn { padding: 8px 14px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; display: flex; align-items: center; gap: 6px; transition: all 0.2s; white-space: nowrap; user-select: none; }
+        .btn-secondary { background: #e5e7eb; color: #374151; }
+        .btn-secondary:hover { background: #d1d5db; }
+        .btn-primary { background: #be123c; color: white; }
+        .btn-primary:hover { background: #9f1239; }
+        .btn-ai { background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%); color: white; box-shadow: 0 2px 4px rgba(124, 58, 237, 0.3); } /* 渐变 AI 按钮 */
+        .btn-ai:hover { box-shadow: 0 4px 8px rgba(124, 58, 237, 0.4); transform: translateY(-1px); }
+        
+        .btn:disabled { opacity: 0.5; cursor: wait; pointer-events: none; }
+        .btn.active { background: #dbeafe; color: #1d4ed8; border: 1px solid #2563eb; }
+        
+        .select-mode { padding: 8px 12px; border-radius: 6px; font-size: 13px; border: 1px solid #d1d5db; background-color: #f9fafb; color: #374151; outline: none; cursor: pointer; min-width: 120px; }
+        
+        /* 预览区域 */
+        .preview-pane { background: #e5e5e5; display: flex; flex-direction: column; position: relative; order: 1; height: 45vh; border-bottom: 1px solid #ddd; z-index: 5; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); width: 100%; }
+        
+        @media (min-width: 1024px) { 
+            /* 桌面版默认布局 */
+            .preview-pane { width: 50%; order: 1; height: 100%; border-bottom: none; border-right: 1px solid #ddd; } 
+            
+            /* 桌面版全屏模式 */
+            .preview-pane.full-screen { width: 100% !important; border-right: none; }
+        }
+        
+        .preview-header { padding: 6px 16px; background: white; border-bottom: 1px solid #e5e7eb; color: #6b7280; font-size: 11px; flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; }
+        
+        /* 预览内容容器：占满剩余空间 */
+        .preview-content { flex: 1; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; overflow: hidden; background-color: #525252; position: relative; }
+        
+        /* 编辑器区域 */
+        .editor-pane { background: #1e1e1e; display: flex; flex-direction: column; order: 2; flex: 1; min-height: 0; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); opacity: 1; width: 100%; }
+        
+        @media (min-width: 1024px) { 
+            .editor-pane { width: 50%; height: 100%; order: 2; } 
+            
+            /* 收起状态 */
+            .editor-pane.collapsed { 
+                width: 0 !important; 
+                opacity: 0; 
+                overflow: hidden; 
+                flex: 0 0 0; /* 强制flex不占用空间 */
+                min-width: 0; /* 防止内容撑开 */
+            } 
+        }
+
+        .editor-header { padding: 6px 16px; background: #2d2d2d; color: #9ca3af; font-size: 11px; border-bottom: 1px solid #000; display: flex; justify-content: space-between; flex-shrink: 0; align-items: center; }
+        .code-editor { flex: 1; width: 100%; padding: 16px; background: #1e1e1e; color: #d4d4d4; font-family: 'Menlo', 'Monaco', 'Courier New', monospace; font-size: 13px; line-height: 1.5; border: none; resize: none; outline: none; white-space: pre; overflow-x: auto; }
+        
+        /* 预览容器本身 */
+        #previewContainer { background: white; box-shadow: 0 0 40px rgba(0,0,0,0.5); overflow: hidden; transform-origin: center center; flex-shrink: 0; transition: transform 0.1s ease-out; }
+        
+        /* 分隔栏切换按钮 */
+        .sidebar-toggle {
+            position: absolute;
+            z-index: 30;
+            background: white;
+            border: 1px solid #d1d5db;
+            color: #4b5563;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: all 0.2s;
+            /* 默认位置 (桌面) */
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        
+        .sidebar-toggle:hover { background: #f3f4f6; color: #111827; transform: translate(-50%, -50%) scale(1.1); }
+
+        /* 当编辑器收起时，按钮位置靠右 */
+        .editor-pane.collapsed + .sidebar-toggle, 
+        body.full-screen-mode .sidebar-toggle {
+            left: auto;
+            right: 16px;
+            top: 60px; 
+            transform: none;
+        }
+
+        /* 移动端隐藏中间悬浮按钮 */
+        @media (max-width: 1023px) {
+            .sidebar-toggle { display: none; }
+        }
+        
+        /* 模态框 & 遮罩 */
+        #processingOverlay, #settingsOverlay { position: absolute; inset: 0; background: rgba(0,0,0,0.85); z-index: 50; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; opacity: 0; pointer-events: none; transition: opacity 0.2s; backdrop-filter: blur(2px); }
+        #processingOverlay.active, #settingsOverlay.active { opacity: 1; pointer-events: auto; }
+        
+        .modal-box { background: #1f2937; padding: 24px; border-radius: 12px; border: 1px solid #374151; width: 90%; max-width: 400px; color: #f3f4f6; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        .modal-title { font-size: 18px; font-weight: bold; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+        .form-group { margin-bottom: 12px; }
+        .form-label { display: block; font-size: 12px; margin-bottom: 4px; color: #9ca3af; }
+        .form-input { width: 100%; padding: 8px 12px; background: #111827; border: 1px solid #374151; border-radius: 6px; color: white; font-size: 13px; outline: none; }
+        .form-input:focus { border-color: #7c3aed; }
+
+        .spinner { width: 36px; height: 36px; border: 3px solid #ffffff; border-bottom-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 12px; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        
+        .error-box { max-width: 90%; padding: 12px; background: #7f1d1d; border: 1px solid #ef4444; border-radius: 6px; color: #fecaca; margin-top: 10px; font-family: monospace; font-size: 11px; white-space: pre-wrap; display: none; word-break: break-all; text-align: left; }
+    </style>
+</head>
+<body>
+
+    <!-- 顶部导航栏 -->
+    <header>
+        <div class="logo-area">
+            <div class="logo-box">R</div>
+            <div style="line-height: 1.2;">
+                <h1 style="font-size: 16px; font-weight: 600; color: #1f2937;">Reveal to PPTX</h1>
+                <span style="font-size: 10px; color: #6b7280;">Canvas AI Edition (Fixed)</span>
+            </div>
+        </div>
+        
+        <div style="display: flex; gap: 8px; align-items: center;">
+            <div class="hidden sm:flex items-center gap-2 mr-2 border-r pr-4 border-gray-200">
+                <span class="text-xs text-gray-500 font-medium">Theme:</span>
+                <select id="themeSelect" onchange="renderPreview()" class="select-mode" style="min-width: 100px; padding: 6px 10px;">
+                    <option value="black">⚫ Black (默认)</option>
+                    <option value="deep-reading">📖 Deep Reading (人文)</option>
+                    <option value="league">🏁 League</option>
+                    <option value="white">⚪ White</option>
+                    <option value="beige">📜 Beige</option>
+                </select>
+            </div>
+
+            <select id="exportMode" class="select-mode hidden sm:block">
+                <option value="snapshot-only">📸 整页截图</option>
+                <option value="layered-image" selected>🧩 元素分层 (推荐)</option>
+                <option value="text-editable">📝 文字可编辑</option>
+            </select>
+            
+            <!-- 编辑模式按钮 -->
+            <button id="editModeBtn" onclick="toggleEditMode()" class="btn btn-secondary" title="开启后直接在预览图修改文字">
+                <i class="fa-solid fa-pen-to-square"></i> <span class="hidden sm:inline">编辑</span>
+            </button>
+            
+            <div style="width: 1px; height: 20px; background: #e5e7eb; margin: 0 4px;"></div>
+
+            <!-- 代码显示/隐藏按钮 (新增) -->
+            <button onclick="toggleSidebar()" class="btn btn-secondary" title="显示/隐藏代码视图">
+                <i class="fa-solid fa-code"></i>
+            </button>
+
+            <button onclick="renderPreview()" class="btn btn-secondary" title="刷新预览">
+                <i class="fa-solid fa-rotate-right"></i>
+            </button>
+            <button id="exportBtn" onclick="triggerExport()" class="btn btn-primary">
+                <i class="fa-solid fa-file-export"></i> <span>导出</span>
+            </button>
+        </div>
+    </header>
+
+    <main id="mainContainer">
+        <!-- 预览区域 -->
+        <div id="previewPane" class="preview-pane">
+            <div class="preview-header">
+                <div class="flex items-center gap-2">
+                    <span class="font-bold">Preview</span>
+                    <span id="resInfo" style="color: #9ca3af; font-weight: normal;">Scale: 1.0</span>
+                </div>
+            </div>
+            <div class="preview-content" id="previewContentBox">
+                <div id="previewContainer" style="width: 1280px; height: 720px;">
+                    <iframe id="previewFrame" style="width: 100%; height: 100%; border: 0; background: white;"></iframe>
+                </div>
+                
+                <!-- 通用遮罩 (导出 & AI 生成) -->
+                <div id="processingOverlay">
+                    <div id="loadingSpinner" class="spinner"></div>
+                    <h3 id="statusTitle" style="font-size: 16px; font-weight: bold; margin-bottom: 4px;">正在处理...</h3>
+                    <p id="progressText" style="color: #d1d5db; font-size: 12px;">请稍候</p>
+                    <div id="errorLog" class="error-box"></div>
+                    <button id="closeOverlayBtn" onclick="hideOverlay()" class="btn btn-secondary" style="margin-top: 16px; display: none;">关闭</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 分隔栏按钮 (Toggle) -->
+        <button id="sidebarToggle" class="sidebar-toggle" onclick="toggleSidebar()" title="切换全屏/分屏">
+            <i class="fa-solid fa-chevron-right" id="toggleIcon"></i>
+        </button>
+
+        <!-- 代码编辑区域 -->
+        <div id="editorPane" class="editor-pane">
+            <div class="editor-header">
+                <div class="flex items-center gap-2">
+                    <span>Source</span>
+                    <!-- AI 设置按钮 -->
+                    <button onclick="openSettings()" class="text-xs text-purple-400 hover:text-purple-300 ml-2" title="配置 AI 模型">
+                        <i class="fa-solid fa-gear"></i> 设置
+                    </button>
+                </div>
+                <div class="flex items-center gap-2">
+                     <button onclick="aiRefactor()" id="aiBtn" class="btn btn-ai" style="padding: 4px 10px; font-size: 12px;">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> AI 改造 PPT
+                    </button>
+                </div>
+            </div>
+            <textarea id="htmlInput" class="code-editor" spellcheck="false" placeholder="在此输入 Markdown 大纲、纯文本或 HTML...&#10;&#10;例如：&#10;# 演示标题&#10;- 第一点&#10;- 第二点&#10;&#10;然后点击上方 'AI 改造 PPT' 按钮，AI 将根据选择的 Theme 自动生成漂亮的幻灯片。"></textarea>
+        </div>
+    </main>
+
+    <!-- Settings Modal -->
+    <div id="settingsOverlay">
+        <div class="modal-box">
+            <div class="modal-title">
+                <span>AI 模型设置</span>
+                <button onclick="closeSettings()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-times"></i></button>
+            </div>
+            <div class="form-group">
+                <label class="form-label">API Base URL (e.g. OpenAI, Deepseek, MiniMax)</label>
+                <input type="text" id="apiBaseUrl" class="form-input" placeholder="https://api.openai.com/v1">
+            </div>
+            <div class="form-group">
+                <label class="form-label">API Key</label>
+                <input type="password" id="apiKey" class="form-input" placeholder="sk-...">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Model Name</label>
+                <input type="text" id="apiModel" class="form-input" placeholder="gpt-4o-mini">
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px;">
+                <button onclick="closeSettings()" class="btn btn-secondary">取消</button>
+                <button onclick="saveSettings()" class="btn btn-primary">保存设置</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const DEEP_READING_CSS = `
+        /* =========================================
+           1. 竖屏/人文阅读适配版 (Deep Reading Style)
+           ========================================= */
+        :root {
+            --bg-paper: #F3F0EB;
+            --bg-sidebar: #2C2825;
+            --primary: #8B3A3A;
+            --secondary: #E0E0E0;
+            --accent: #E9D8A6;
+            --text-main: #2C2825;
+            --text-light: #757575;
+            --sidebar-width: 60px;
+        }
+
+        .reveal-viewport { background-color: var(--bg-paper) !important; }
+        
+        /* 噪点纹理叠加 */
+        .reveal-viewport::before {
+            content: ""; position: fixed; inset: 0; pointer-events: none; z-index: -1;
+            background-image: radial-gradient(#8B3A3A 0.5px, transparent 0.5px), radial-gradient(#8B3A3A 0.5px, #F3F0EB 0.5px);
+            background-size: 20px 20px; background-position: 0 0, 10px 10px; opacity: 0.03;
+        }
+
+        .reveal { font-family: 'Noto Sans SC', sans-serif; color: var(--text-main); font-size: 20px; line-height: 1.6; }
+        .reveal h1, .reveal h2, .reveal h3 { font-family: 'Noto Serif SC', serif; color: #2C2825; font-weight: 900; text-transform: none; }
+        .reveal h1 { font-size: 2.2em; line-height: 1.2; margin-bottom: 20px; }
+        .reveal h3 { font-size: 1.4em; border-bottom: 3px solid var(--primary); display: inline-block; margin-bottom: 20px; padding-bottom: 5px; }
+
+        .marker { background: linear-gradient(120deg, transparent 40%, var(--accent) 40%, var(--accent) 100%); padding: 0 4px; }
+
+        /* 侧边栏 */
+        .sidebar {
+            position: absolute; top: 0; left: 0; bottom: 0;
+            width: var(--sidebar-width); height: 100%; min-height: 100vh;
+            background: var(--bg-sidebar);
+            display: flex; flex-direction: column; 
+            align-items: center; justify-content: space-between;
+            padding: 20px 0;
+            z-index: 10; color: #fff;
+            box-sizing: border-box;
+        }
+        .sidebar-text {
+            writing-mode: vertical-rl; text-orientation: mixed;
+            font-family: 'Noto Serif SC', serif; letter-spacing: 3px;
+            font-size: 14px; opacity: 0.9; margin-top: 20px;
+        }
+        .page-num {
+            font-family: 'Times New Roman', serif; font-size: 16px;
+            border-top: 1px solid rgba(255,255,255,0.3); padding-top: 10px; margin-bottom: 20px;
+        }
+
+        .slide-content {
+            margin-left: var(--sidebar-width);
+            padding: 40px 50px;
+            height: 100%; box-sizing: border-box;
+            display: flex; flex-direction: column;
+            text-align: left;
+        }
+
+        .editorial-grid {
+            display: grid; grid-template-columns: 1.4fr 1fr; gap: 40px; height: 100%; align-items: start;
+        }
+
+        .sticky-note {
+            background: var(--accent);
+            padding: 20px; color: #4E342E;
+            font-family: 'Noto Serif SC', serif; font-size: 0.9em;
+            box-shadow: 2px 4px 12px rgba(0,0,0,0.1);
+            transform: rotate(1deg); position: relative;
+        }
+        .sticky-note::before {
+            content: ''; position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
+            width: 30%; height: 20px; background: rgba(255,255,255,0.4); box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+
+        .dense-table { width: 100%; border-collapse: collapse; font-size: 0.75em; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .dense-table th { background: var(--bg-sidebar); color: #fff; padding: 8px; font-weight: normal; }
+        .dense-table td { border-bottom: 1px solid #eee; padding: 8px; color: #444; }
+        .dense-table tr:nth-child(even) { background: #FAFAFA; }
+
+        .image-stack { background: white; padding: 10px 10px 30px 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.15); transform: rotate(-2deg); text-align: center; }
+        .image-stack img { width: 100%; display: block; }
+        .image-stack-caption { font-family: 'Nothing You Could Do', cursive, serif; color: #666; font-size: 0.8em; margin-top: 10px; }
+
+        .reveal .slides section { padding: 0 !important; top: 0 !important; }
+        .reveal .slide-number { display: none; }
+        .reveal .slides > section.present { min-height: 100vh !important; top: 0 !important; display: block !important; }
+    `;
+
+        // === 1. 核心数据与初始化 ===
+        const DEFAULT_TEMPLATE = `<section>
+    <p>输入 Markdown 或纯文本，点击 'AI 改造 PPT'</p>
+    <p>或者直接复制 HTML 代码到这里，点击右上角刷新</p>
+    <p>如果要编辑文本，点击上方的编辑</p>
+</section>
+`;
+
+        const htmlInput = document.getElementById('htmlInput');
+        htmlInput.value = DEFAULT_TEMPLATE;
+        let lastRenderedContent = DEFAULT_TEMPLATE;
+
+        // === 2. 注入 Iframe 的脚本 (核心逻辑) ===
+        const injectionScript = `
+            <style>
+                .reveal .controls, .reveal .progress { display: none !important; }
+                .ppt-hollow-mode * { opacity: 0 !important; pointer-events: none !important; }
+                .ppt-hollow-mode, .ppt-hollow-mode body, .ppt-hollow-mode .reveal, .ppt-hollow-mode .reveal-viewport { opacity: 1 !important; }
+            </style>
+            <script>
+                // === 导出模式枚举 ===
+                const EXPORT_MODE = {
+                    SNAPSHOT_ONLY: 'snapshot-only',   // 整页截图
+                    LAYERED_IMAGE: 'layered-image',   // 分层截图
+                    TEXT_EDITABLE: 'text-editable',   // 文字可编辑
+                };
+                window.onerror = function(msg, url, line) {
+                    window.parent.postMessage({ type: 'EXPORT_ERROR', error: msg }, '*');
+                };
+
+                function loadScript(url) {
+                    return new Promise((resolve, reject) => {
+                        if (document.querySelector('script[src="' + url + '"]')) return resolve();
+                        const script = document.createElement('script');
+                        script.src = url;
+                        script.onload = resolve;
+                        script.onerror = () => reject(new Error('Failed to load: ' + url));
+                        document.head.appendChild(script);
+                    });
+                }
+
+                const LIBS = {
+                    htmlToImage: 'https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.min.js',
+                    pptxGen: 'https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js'
+                };
+
+                window.addEventListener('message', async (event) => {
+                    const { type, active, exportMode } = event.data;
+
+                    // A. 切换编辑模式
+                    if (type === 'TOGGLE_EDIT_MODE') {
+                        const editableSelectors = 'h1, h2, h3, h4, h5, h6, p, li, span, small, a';
+                        const elements = document.querySelectorAll(editableSelectors);
+                        
+                        document.body.classList.toggle('editing-mode', active);
+                        
+                        elements.forEach(el => {
+                            el.contentEditable = active;
+                            el.style.outline = active ? '1px dashed #666' : 'none';
+                            el.style.minWidth = active ? '20px' : 'auto';
+                            if(active) {
+                                el.oninput = function() { }
+                            }
+                        });
+                    }
+
+                    if (event.data.type === 'START_EXPORT') {
+                        try {
+                            window.parent.postMessage({ type: 'EXPORT_STATUS', msg: '正在下载核心库...' }, '*');
+                            if (typeof htmlToImage === 'undefined') await loadScript(LIBS.htmlToImage);
+                            if (typeof PptxGenJS === 'undefined') await loadScript(LIBS.pptxGen);
+                            
+                            if (typeof PptxGenJS === 'undefined' || typeof htmlToImage === 'undefined') {
+                                throw new Error("库加载失败，请检查网络。");
+                            }
+
+                            window.parent.postMessage({ type: 'EXPORT_STATUS', msg: '收集页面样式...' }, '*');
+                            const cssText = await collectPageStyles();
+
+                            window.parent.postMessage({ type: 'EXPORT_STATUS', msg: '依赖就绪，开始分析...' }, '*');
+                            await startHybridExport(event.data.exportMode, cssText);
+                        } catch(e) {
+                            console.error(e);
+                            window.parent.postMessage({ type: 'EXPORT_ERROR', error: e.message || JSON.stringify(e) }, '*');
+                        }
+                    }
+                });
+
+                async function collectPageStyles() {
+                    let combinedCSS = '';
+                    const links = Array.from(document.querySelectorAll('link[rel="stylesheet"]'));
+                    for (const link of links) {
+                        try {
+                            if(link.href) {
+                                const res = await fetch(link.href);
+                                const text = await res.text();
+                                combinedCSS += text + '\\n';
+                            }
+                        } catch(e) { console.warn('CSS fetch failed:', link.href); }
+                    }
+                    const styles = Array.from(document.querySelectorAll('style'));
+                    styles.forEach(s => combinedCSS += s.innerHTML + '\\n');
+                    return combinedCSS;
+                }
+
+                // Canvas 绘图辅助
+                async function iconToDataURL(node) {
+                    await document.fonts.ready;
+                    return new Promise((resolve) => {
+                        const style = window.getComputedStyle(node);
+                        const beforeStyle = window.getComputedStyle(node, '::before');
+                        const content = beforeStyle.content;
+                        
+                        if (!content || content === 'none' || content === '""') return resolve(null);
+                        
+                        const iconChar = content.replace(/['"]/g, '');
+                        const fontSize = parseFloat(style.fontSize);
+                        const canvas = document.createElement('canvas');
+                        const scale = 3; 
+                        const w = (parseFloat(style.width) || fontSize);
+                        const h = (parseFloat(style.height) || fontSize);
+                        const padding = 10;
+                        canvas.width = (w + padding * 2) * scale; 
+                        canvas.height = (h + padding * 2) * scale; 
+                        const ctx = canvas.getContext('2d');
+                        ctx.scale(scale, scale);
+                        
+                        const fontFamily = style.fontFamily.includes('Font Awesome') ? style.fontFamily : '"Font Awesome 6 Free", "Font Awesome 6 Brands", ' + style.fontFamily;
+                        ctx.font = \`\${style.fontWeight} \${fontSize}px \${fontFamily}\`;
+                        ctx.fillStyle = style.color;
+                        ctx.textBaseline = 'middle';
+                        ctx.textAlign = 'center';
+                        ctx.fillText(iconChar, (canvas.width / scale) / 2, (canvas.height / scale) / 2);
+                        resolve(canvas.toDataURL('image/png'));
+                    });
+                }
+
+                function getShadowPadding(node) {
+                    const style = window.getComputedStyle(node);
+                    const shadow = style.boxShadow;
+                    if (!shadow || shadow === 'none') return 0;
+                    const matches = shadow.match(/(-?\\d+px)/g);
+                    let maxVal = 0;
+                    if(matches) {
+                        matches.forEach(m => {
+                            const val = Math.abs(parseFloat(m));
+                            if(val > maxVal) maxVal = val;
+                        });
+                    }
+                    return maxVal + 10; 
+                }
+
+                async function exportSnapshotOnly(pptSlide, globalCSS) {
+                    const target = document.querySelector('.reveal') || document.body;
+                    try {
+                        const imgData = await htmlToImage.toPng(target, { width: 1280, height: 720, pixelRatio: 2, fontEmbedCSS: globalCSS, style: { margin: 0 } });
+                        pptSlide.addImage({ data: imgData, x: 0, y: 0, w: "100%", h: "100%" });
+                    } catch (e) {}
+                }
+
+                async function startHybridExport(exportMode, globalCSS) {
+                    const pres = new PptxGenJS();
+                    pres.layout = 'LAYOUT_16x9'; 
+                    const PPT_HEIGHT_PTS = 5.625 * 72;
+                    
+                    function rgbToHex(rgb) {
+                        if (!rgb || rgb === 'transparent') return null;
+                        if (rgb.startsWith('#')) return rgb;
+                        const res = rgb.match(/\\d+/g);
+                        if (!res) return null;
+                        return "#" + res.slice(0,3).map(x => parseInt(x).toString(16).padStart(2,'0')).join('');
+                    }
+                    function normalizeColor(colorStr) {
+                        if (!colorStr) return null;
+                        if (colorStr.startsWith('#')) return colorStr.substring(1);
+                        return colorStr;
+                    }
+
+                    function analyzeNode(node) {
+                        const style = window.getComputedStyle(node);
+                        if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return 'IGNORE';
+                        const tag = node.tagName.toLowerCase();
+                        if (tag === 'img' || tag === 'svg' || tag === 'video' || tag === 'canvas') return 'ICON';
+                        if (node.classList && Array.from(node.classList).some(c => c === 'fa' || c.startsWith('fa-'))) return 'ICON';
+                        const before = window.getComputedStyle(node, '::before').content;
+                        if (before && before !== 'none' && before !== '""' && (tag === 'i' || tag === 'span')) return 'ICON';
+                        if (style.webkitBackgroundClip === 'text' || style.backgroundClip === 'text') {
+                            if (style.backgroundImage !== 'none') return 'SNAPSHOT_IMAGE';
+                        }
+                        const blockTags = ['DIV', 'P', 'SECTION', 'UL', 'OL', 'LI', 'TABLE', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'BLOCKQUOTE'];
+                        const hasBlockChildren = Array.from(node.children).some(child => blockTags.includes(child.tagName));
+                        if (!hasBlockChildren && node.innerText && node.innerText.trim().length > 0) return 'RICH_TEXT';
+                        const hasBg = style.backgroundColor !== 'rgba(0, 0, 0, 0)' && style.backgroundColor !== 'transparent';
+                        const hasBorder = style.borderWidth !== '0px' && style.borderStyle !== 'none';
+                        const hasShadow = style.boxShadow !== 'none';
+                        const hasBgImg = style.backgroundImage !== 'none';
+                        if (hasBg || hasBorder || hasShadow || hasBgImg) return 'CONTAINER';
+                        return 'IGNORE';
+                    }
+
+                    function getRichTextRuns(rootNode) {
+                        let runs = [];
+                        function traverse(node, currentStyle) {
+                            if (node.nodeType === 3) { 
+                                let text = node.nodeValue;
+                                if (text && text.length > 0) {
+                                    text = text.replace(/\u00A0/g, ' ');
+                                    text = text.replace(/\u200B/g, '');
+                                    if (text.length > 0) {
+                                        runs.push({
+                                            text: text,
+                                            options: {
+                                                color: normalizeColor(rgbToHex(currentStyle.color)),
+                                                fontSize: (parseFloat(currentStyle.fontSize) / 720) * PPT_HEIGHT_PTS,
+                                                bold: parseInt(currentStyle.fontWeight) >= 600 || currentStyle.fontWeight === 'bold',
+                                                italic: currentStyle.fontStyle === 'italic',
+                                                underline: currentStyle.textDecoration.includes('underline'),
+                                                highlight: (currentStyle.backgroundColor !== 'rgba(0, 0, 0, 0)' && currentStyle.backgroundColor !== 'transparent') 
+                                                    ? normalizeColor(rgbToHex(currentStyle.backgroundColor)) 
+                                                    : undefined
+                                            }
+                                        });
+                                    }
+                                }
+                            } else if (node.nodeType === 1) { 
+                                const style = window.getComputedStyle(node);
+                                if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return;
+                                node.childNodes.forEach(child => traverse(child, style));
+                            }
+                        }
+                        traverse(rootNode, window.getComputedStyle(rootNode));
+                        return runs;
+                    }
+
+                    function hideAllChildren(node) {
+                        const hiddenNodes = [];
+                        Array.from(node.children).forEach(child => {
+                            if (child.style.opacity !== '0') {
+                                child.dataset.pptOrigOpacity = child.style.opacity;
+                                child.dataset.pptOrigVis = child.style.visibility;
+                                child.style.setProperty('opacity', '0', 'important');
+                                child.style.setProperty('visibility', 'hidden', 'important');
+                                hiddenNodes.push(child);
+                            }
+                        });
+                        if (node.style.color !== 'transparent') {
+                            node.dataset.pptOrigColor = node.style.color;
+                            node.style.setProperty('color', 'transparent', 'important');
+                            hiddenNodes.push(node);
+                        }
+                        return hiddenNodes;
+                    }
+                    
+                    function restoreAllChildren(hiddenNodes) {
+                        hiddenNodes.forEach(child => {
+                            if (child.dataset.pptOrigOpacity !== undefined) {
+                                child.style.opacity = child.dataset.pptOrigOpacity;
+                                delete child.dataset.pptOrigOpacity;
+                            }
+                            if (child.dataset.pptOrigVis !== undefined) {
+                                child.style.visibility = child.dataset.pptOrigVis;
+                                delete child.dataset.pptOrigVis;
+                            }
+                            if (child.dataset.pptOrigColor !== undefined) {
+                                child.style.color = child.dataset.pptOrigColor;
+                                delete child.dataset.pptOrigColor;
+                            }
+                        });
+                    }
+
+                    async function captureGlobalHollowBackground() {
+                        const CONTENT_SELECTORS = ['.reveal .slides', '.reveal section', '.reveal .controls', '.reveal .progress', '.reveal .slide-number', '.reveal .speaker-notes'];
+                        const hiddenList = [];
+                        CONTENT_SELECTORS.forEach(selector => {
+                            document.querySelectorAll(selector).forEach(el => {
+                                if (el.dataset._pptHidden) return;
+                                el.dataset._pptHidden = '1';
+                                el.dataset._pptOrigDisplay = el.style.display;
+                                el.style.display = 'none';
+                                hiddenList.push(el);
+                            });
+                        });
+                        let bgData = null;
+                        try {
+                            bgData = await htmlToImage.toPng(document.documentElement, { width: 1280, height: 720, pixelRatio: 1.5, skipFonts: true, style: { margin: 0, transform: 'none' } });
+                        } catch (e) { console.warn('[captureGlobalBackground] failed:', e); } finally {
+                            hiddenList.forEach(el => {
+                                el.style.display = el.dataset._pptOrigDisplay || '';
+                                delete el.dataset._pptOrigDisplay;
+                                delete el.dataset._pptHidden;
+                            });
+                        }
+                        return bgData;
+                    };
+
+                    let slides = [];
+                    let mode = "DOM";
+                    if (typeof Reveal !== 'undefined' && Reveal.isReady()) {
+                        mode = "API";
+                        const total = Reveal.getTotalSlides();
+                        for(let i=0; i<total; i++) slides.push(i);
+                    } else {
+                        mode = "DOM";
+                        let domSlides = document.querySelectorAll('.reveal .slides > section');
+                        if (domSlides.length === 0) domSlides = document.querySelectorAll('body > section, section');
+                        if(domSlides.length === 0) throw new Error("未找到幻灯片。请确保内容已被正确加载。");
+                        slides = Array.from(domSlides);
+                    }
+                    
+                    for (let i = 0; i < slides.length; i++) {
+                        window.parent.postMessage({ type: 'EXPORT_PROGRESS', current: i + 1, total: slides.length }, '*');
+                        
+                        if (mode === "API") {
+                            Reveal.slide(i);
+                            await new Promise(r => setTimeout(r, 800)); 
+                        } else {
+                            const allSlides = document.querySelectorAll('section');
+                            allSlides.forEach(s => { s.style.display = 'none'; s.classList.remove('present'); });
+                            const current = slides[i];
+                            current.style.display = 'block';
+                            current.classList.add('present');
+                            if (!current.closest('.slides')) { current.style.height = '100vh'; current.style.boxSizing = 'border-box'; }
+                            await new Promise(r => setTimeout(r, 100));
+                        }
+                        await document.fonts.ready;
+
+                        let currentSlide = (mode === "API") ? Reveal.getCurrentSlide() : slides[i];
+                        const viewportW = 1280; 
+                        const viewportH = 720;
+                        const pptSlide = pres.addSlide();
+
+                        if (exportMode === 'snapshot-only') {
+                            await exportSnapshotOnly(pptSlide, globalCSS);
+                            continue;
+                        }
+
+                        const hollowBgData = await captureGlobalHollowBackground();
+                        if (hollowBgData) {
+                            pptSlide.addImage({ data: hollowBgData, x: 0, y: 0, w: "100%", h: "100%" });
+                        } else {
+                            pptSlide.background = { color: "FFFFFF" };
+                        }
+
+                        const allNodes = Array.from(currentSlide.querySelectorAll('*'));
+                        const processedNodes = new Set(); 
+                        const nodeAnalysis = new Map();
+                        allNodes.forEach(node => nodeAnalysis.set(node, analyzeNode(node)));
+
+                        for (const node of allNodes) {
+                            if (processedNodes.has(node)) continue;
+                            const type = nodeAnalysis.get(node);
+                            if (type === 'IGNORE') continue;
+                            const rect = node.getBoundingClientRect();
+                            if (rect.width === 0 || rect.height === 0) continue;
+                            let x = (rect.left / viewportW * 100);
+                            let y = (rect.top / viewportH * 100);
+                            let w = (rect.width / viewportW * 100);
+                            let h = (rect.height / viewportH * 100);
+                            if (x > 100 || y > 100) continue;
+
+                            if (type === 'CONTAINER') {
+                                const hiddenNodes = hideAllChildren(node);
+                                try {
+                                    const PADDING = getShadowPadding(node);
+                                    const scaleFactor = rect.width / node.offsetWidth;
+                                    const PAD_VISUAL = PADDING * scaleFactor;
+                                    const PAD_PCT_W = (PAD_VISUAL / viewportW) * 100;
+                                    const PAD_PCT_H = (PAD_VISUAL / viewportH) * 100;
+                                    const cs = window.getComputedStyle(node);
+                                    const imgData = await htmlToImage.toPng(node, { 
+                                        cacheBust: true, pixelRatio: 2, skipFonts: true, 
+                                        width: node.offsetWidth + (PADDING * 2) + 2, 
+                                        height: node.offsetHeight + (PADDING * 2), 
+                                        style: { 
+                                            transform: 'translate(' + PADDING + 'px, ' + PADDING + 'px)',
+                                            margin: 0, width: (node.offsetWidth + 1) + 'px', height: node.offsetHeight + 'px',
+                                            boxSizing: 'border-box', maxWidth: 'none', minWidth: 'none',
+                                            backgroundColor: cs.backgroundColor, backgroundImage: cs.backgroundImage,
+                                            border: cs.border, borderRadius: cs.borderRadius, boxShadow: cs.boxShadow,
+                                            paddingRight: '1px' 
+                                        }
+                                    });
+                                    pptSlide.addImage({ data: imgData, x: (x - PAD_PCT_W) + "%", y: (y - PAD_PCT_H) + "%", w: (w + (PAD_PCT_W * 2)) + "%", h: (h + (PAD_PCT_H * 2)) + "%" });
+                                } catch(e) {}
+                                restoreAllChildren(hiddenNodes);
+                            }
+                            else if (type === 'ICON' || type === 'SNAPSHOT_IMAGE') {
+                                node.querySelectorAll('*').forEach(child => processedNodes.add(child));
+                                try {
+                                    let imgData = null;
+                                    if (type === 'ICON') imgData = await iconToDataURL(node);
+                                    if (!imgData) {
+                                        const scaleFactor = rect.width / node.offsetWidth;
+                                        const P = 5; 
+                                        const P_VIS = P * scaleFactor;
+                                        const PAD_PCT_W = (P_VIS / viewportW) * 100;
+                                        const PAD_PCT_H = (P_VIS / viewportH) * 100;
+                                        imgData = await htmlToImage.toPng(node, {
+                                            cacheBust: true, pixelRatio: 3, fontEmbedCSS: globalCSS,
+                                            width: node.offsetWidth + (P*2), height: node.offsetHeight + (P*2),
+                                            style: { visibility: 'visible', display: 'inline-block', margin: 0, transform: 'translate('+P+'px, '+P+'px)', boxSizing: 'border-box' }
+                                        });
+                                        pptSlide.addImage({ data: imgData, x: (x - PAD_PCT_W)+"%", y: (y - PAD_PCT_H)+"%", w: (w + PAD_PCT_W*2)+"%", h: (h + PAD_PCT_H*2)+"%" });
+                                    } else {
+                                        pptSlide.addImage({ data: imgData, x: x+"%", y: y+"%", w: w+"%", h: h+"%" });
+                                    }
+                                } catch(e) {}
+                            }
+                            else if (type === 'RICH_TEXT') {
+                                node.querySelectorAll('*').forEach(child => processedNodes.add(child));
+                                if (exportMode === 'layered-image') {
+                                    try {
+                                        const scaleFactor = rect.width / node.offsetWidth;
+                                        const fontSize = parseFloat(window.getComputedStyle(node).fontSize);
+                                        const ratio = fontSize < 20 ? 3 : 2; 
+                                        const P = 5; 
+                                        const P_VIS = P * scaleFactor;
+                                        const PAD_PCT_W = (P_VIS / viewportW) * 100;
+                                        const PAD_PCT_H = (P_VIS / viewportH) * 100;
+                                        const imgData = await htmlToImage.toPng(node, { 
+                                            cacheBust: true, pixelRatio: ratio, fontEmbedCSS: globalCSS, 
+                                            width: node.offsetWidth + (P * 2) + 2, height: node.offsetHeight + (P * 2),
+                                            style: { margin: 0, transform: 'translate(' + P + 'px, ' + P + 'px)', width: (node.offsetWidth + 1) + 'px', height: node.offsetHeight + 'px', boxSizing: 'border-box' } 
+                                        });
+                                        pptSlide.addImage({ data: imgData, x: (x - PAD_PCT_W) + "%", y: (y - PAD_PCT_H) + "%", w: (w + (PAD_PCT_W * 2)) + "%", h: (h + (PAD_PCT_H * 2)) + "%" });
+                                    } catch(e) { console.warn("Text snap failed", e); }
+                                } else {
+                                    const textRuns = getRichTextRuns(node);
+                                    const parentStyle = window.getComputedStyle(node);
+                                    const alignMap = { 'left': 'left', 'center': 'center', 'right': 'right', 'justify': 'justify' };
+                                    const align = alignMap[parentStyle.textAlign] || 'left';
+                                    pptSlide.addText(textRuns, {
+                                        x: x + "%", y: y + "%", w: w + "%", h: h + "%",
+                                        align: align, valign: "top", fontFace: "Arial", autoFit: true, margin: 0 
+                                    });
+                                }
+                            }
+                        }
+                    }
+                    let cleanTitle = document.title.trim() || "Reveal_Presentation";
+                    cleanTitle = cleanTitle.replace(/\s+/g, "_");
+                    let suffix = exportMode === 'snapshot-only' ? 'Snapshot' : (exportMode === 'layered-image' ? 'Split' : 'Editable');
+                    pres.writeFile({ fileName: cleanTitle + '_' + suffix + '.pptx' });
+                    window.parent.postMessage({ type: 'EXPORT_COMPLETE' }, '*');
+                }
+            <\/script>
+        `;
+
+        // === 3. 预览渲染逻辑 ===
+        htmlInput.addEventListener('blur', () => {
+            const currentContent = htmlInput.value.trim();
+            if (currentContent && currentContent !== lastRenderedContent) {
+                renderPreview();
+            }
+        });
+
+        function renderPreview() {
+            let rawHtml = htmlInput.value;
+            lastRenderedContent = rawHtml.trim();
+            const previewFrame = document.getElementById('previewFrame');
+            const selectedTheme = document.getElementById('themeSelect').value;
+            const isDeepReading = selectedTheme === 'deep-reading';
+
+            // 自动包裹 Reveal 结构
+            if (!rawHtml.includes('<html') && !rawHtml.includes('class="reveal"')) {
+                let themeLink = "";
+                // 修复：如果选择 Deep Reading，不加载不存在的 CSS，而是稍后注入
+                if (!isDeepReading) {
+                    themeLink = `<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/${selectedTheme}.min.css" id="theme">`;
+                }
+                
+                const WRAPPER_START = `<!doctype html><html><head><meta charset="utf-8"><title>Reveal</title>
+                <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
+                ${themeLink}
+                <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"></head><body><div class="reveal"><div class="slides">`;
+                
+                // 修复：必须调用 Reveal.initialize() 否则页面不加载
+                const WRAPPER_END = `</div></div>
+                <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.js"><\/script>
+                <script>
+                    window.onload = function() {
+                        Reveal.initialize({
+                            controls: true, progress: true, center: true, hash: true,
+                            width: 1280, height: 720, margin: 0.04
+                        });
+                    }
+                <\/script>
+                </body></html>`;
+                
+                rawHtml = WRAPPER_START + rawHtml + WRAPPER_END;
+            } else {
+                // 如果是完整 HTML，尝试替换主题或注入初始化
+                if (!isDeepReading && rawHtml.includes('/theme/') && rawHtml.includes('.min.css')) {
+                   rawHtml = rawHtml.replace(/theme\/[a-zA-Z0-9-]+\.min\.css/, `theme/${selectedTheme}.min.css`);
+                }
+                // 确保有 initialize
+                if (!rawHtml.includes('Reveal.initialize')) {
+                    rawHtml = rawHtml.replace('</body>', `<script>Reveal.initialize({ width: 1280, height: 720 });<\/script></body>`);
+                }
+            }
+
+            // 注入自定义 CSS (Deep Reading)
+            if (isDeepReading) {
+                const styleTag = `<style>${DEEP_READING_CSS}</style>`;
+                rawHtml = rawHtml.replace('</head>', styleTag + '</head>');
+            }
+
+            const historyPatch = `<script>try { window.history.pushState = function(){}; window.history.replaceState = function(){}; } catch(e) {}<\/script>`;
+            
+            if (rawHtml.includes('<head>')) {
+                rawHtml = rawHtml.replace('<head>', '<head>' + historyPatch);
+            } else {
+                rawHtml = '<html><head>' + historyPatch + '</head>' + rawHtml + '</html>';
+            }
+
+            if (rawHtml.includes('</body>')) {
+                rawHtml = rawHtml.replace('</body>', injectionScript + '</body>');
+            } else {
+                rawHtml += injectionScript;
+            }
+
+            // 清理旧的 blob
+            if (previewFrame.src && previewFrame.src.startsWith('blob:')) {
+                URL.revokeObjectURL(previewFrame.src);
+            }
+
+            const blob = new Blob([rawHtml], { type: 'text/html' });
+            previewFrame.src = URL.createObjectURL(blob);
+            
+            isEditMode = false;
+            document.getElementById('editModeBtn').classList.remove('active');
+        }
+
+        // === 3.1 自动适应与全屏修复 ===
+        function fitPreview() {
+            const container = document.getElementById('previewContainer');
+            const parent = document.getElementById('previewContentBox'); 
+            
+            if (!parent || !container) return;
+
+            const availW = parent.clientWidth - 40; 
+            const availH = parent.clientHeight - 40;
+            
+            if (availW <= 0 || availH <= 0) return;
+
+            const scale = Math.min(availW / 1280, availH / 720);
+            container.style.transform = `scale(${scale})`;
+            document.getElementById('resInfo').innerText = `Scale: ${scale.toFixed(2)}`;
+        }
+
+        const resizeObserver = new ResizeObserver(entries => {
+            for (let entry of entries) {
+                fitPreview();
+            }
+        });
+        
+        window.addEventListener('DOMContentLoaded', () => {
+            loadSettings();
+            renderPreview();
+            const box = document.getElementById('previewContentBox');
+            if(box) resizeObserver.observe(box);
+            setTimeout(fitPreview, 100);
+        });
+
+
+        // === 4. UI 交互功能 ===
+
+        // 4.1 编辑模式
+        let isEditMode = false;
+        function toggleEditMode() {
+            isEditMode = !isEditMode;
+            const btn = document.getElementById('editModeBtn');
+            const iframe = document.getElementById('previewFrame');
+            
+            if (isEditMode) {
+                btn.classList.add('active');
+                btn.innerHTML = `<i class="fa-solid fa-check"></i> <span class="hidden sm:inline">完成</span>`;
+            } else {
+                btn.classList.remove('active');
+                btn.innerHTML = `<i class="fa-solid fa-pen-to-square"></i> <span class="hidden sm:inline">编辑</span>`;
+            }
+
+            if (iframe.contentWindow) {
+                iframe.contentWindow.postMessage({ type: 'TOGGLE_EDIT_MODE', active: isEditMode }, '*');
+            }
+        }
+
+        // 4.2 侧边栏收起/全屏 (分割线控制)
+        function toggleSidebar() {
+            const editorPane = document.getElementById('editorPane');
+            const previewPane = document.getElementById('previewPane');
+            const toggleIcon = document.getElementById('toggleIcon');
+            const toggleBtn = document.getElementById('sidebarToggle');
+            const body = document.body;
+
+            const isCollapsed = editorPane.classList.toggle('collapsed');
+            previewPane.classList.toggle('full-screen');
+            body.classList.toggle('full-screen-mode'); 
+
+            if (isCollapsed) {
+                toggleIcon.classList.remove('fa-chevron-right');
+                toggleIcon.classList.add('fa-chevron-left');
+                setTimeout(fitPreview, 300);
+                toggleBtn.style.left = 'auto';
+                toggleBtn.style.right = '16px';
+            } else {
+                toggleIcon.classList.remove('fa-chevron-left');
+                toggleIcon.classList.add('fa-chevron-right');
+                setTimeout(fitPreview, 300);
+                toggleBtn.style.left = '50%';
+                toggleBtn.style.right = 'auto';
+            }
+        }
+
+        // 4.3 导出逻辑 & Loading UI
+        const overlay = document.getElementById('processingOverlay');
+        const spinner = document.getElementById('loadingSpinner');
+        const statusTitle = document.getElementById('statusTitle');
+        const progressText = document.getElementById('progressText');
+        const errorLog = document.getElementById('errorLog');
+        const closeBtn = document.getElementById('closeOverlayBtn');
+
+        function showOverlay(title = '正在处理...') {
+            overlay.classList.add('active');
+            spinner.style.display = 'block';
+            statusTitle.innerText = title;
+            statusTitle.style.color = 'white';
+            errorLog.style.display = 'none';
+            closeBtn.style.display = 'none';
+            progressText.innerText = '请稍候...';
+        }
+
+        function hideOverlay() {
+            overlay.classList.remove('active');
+            document.getElementById('exportBtn').disabled = false;
+        }
+
+        function showError(msg) {
+            spinner.style.display = 'none';
+            statusTitle.innerText = '操作失败';
+            statusTitle.style.color = '#fca5a5';
+            progressText.innerText = '错误详情：';
+            errorLog.innerText = msg;
+            errorLog.style.display = 'block';
+            closeBtn.style.display = 'inline-block';
+        }
+
+        function triggerExport() {
+            const iframe = document.getElementById('previewFrame');
+            if (!iframe.contentWindow) return;
+            showOverlay('正在导出 PPT...');
+            document.getElementById('exportBtn').disabled = true;
+            const mode = document.getElementById('exportMode').value;
+            iframe.contentWindow.postMessage({ type: 'START_EXPORT', exportMode: mode }, '*');
+        }
+
+        window.addEventListener('message', (event) => {
+            const data = event.data;
+            if (data.type === 'EXPORT_PROGRESS') {
+                progressText.innerText = `正在处理第 ${data.current} / ${data.total} 页...`;
+            }
+            if (data.type === 'EXPORT_COMPLETE') {
+                statusTitle.innerText = '✅ 导出成功';
+                progressText.innerText = 'PPTX 文件已生成';
+                spinner.style.display = 'none';
+                closeBtn.style.display = 'inline-block';
+            }
+            if (data.type === 'EXPORT_ERROR') {
+                showError(data.error);
+            }
+        });
+
+        // === 5. AI 功能 ===
+
+        const settingsOverlay = document.getElementById('settingsOverlay');
+        
+        function openSettings() { settingsOverlay.classList.add('active'); }
+        function closeSettings() { settingsOverlay.classList.remove('active'); }
+
+        function saveSettings() {
+            const config = {
+                baseUrl: document.getElementById('apiBaseUrl').value.trim(),
+                key: document.getElementById('apiKey').value.trim(),
+                model: document.getElementById('apiModel').value.trim()
+            };
+            localStorage.setItem('ai_config', JSON.stringify(config));
+            closeSettings();
+        }
+
+        function loadSettings() {
+            const saved = localStorage.getItem('ai_config');
+            if (saved) {
+                const config = JSON.parse(saved);
+                document.getElementById('apiBaseUrl').value = config.baseUrl;
+                document.getElementById('apiKey').value = config.key;
+                document.getElementById('apiModel').value = config.model;
+            }
+        }
+
+        async function aiRefactor() {
+            const saved = localStorage.getItem('ai_config');
+            if (!saved) {
+                alert('请先配置 AI 设置 (API Key 等)');
+                openSettings();
+                return;
+            }
+            const config = JSON.parse(saved);
+            if (!config.key) { alert('API Key 为空'); openSettings(); return; }
+
+            const currentCode = htmlInput.value.trim();
+            if (!currentCode) {
+                alert("请先在编辑器中输入内容");
+                return;
+            }
+
+            const theme = document.getElementById('themeSelect').value;
+            const isHtml = currentCode.trim().startsWith('<');
+            const actionText = isHtml ? 'AI 正在优化代码...' : 'AI 正在生成幻灯片...';
+
+            showOverlay(actionText);
+            progressText.innerText = `正在分析文本并应用主题 (${theme})...`;
+
+            let systemPrompt = "";
+
+            if (theme === 'deep-reading') {
+                systemPrompt = `【角色设定】
+你是一位精通 Reveal.js 排版的前端设计师。请为我生成一个“文科深度阅读版” (Humanities Deep Reader) 的 HTML 演示文稿。
+
+【第一步：视觉与画布规范】
+1. 画布：1280x720。
+2. 侧边栏：每页必须包含 <div class="sidebar"><div class="sidebar-text">课程/章节名</div><div class="page-num">页码</div></div>。
+3. 内容区：所有内容包裹在 <div class="slide-content">...</div> 中。
+4. 字体：标题使用 serif，正文 sans-serif。
+
+【第二步：组件库 (请灵活使用以下 class)】
+1. 杂志分栏：<div class="editorial-grid"><div>左栏内容</div><div>右栏内容</div></div>
+2. 高亮笔触：<span class="marker">重点文字</span>
+3. 便利贴引用：<div class="sticky-note"><p>引用内容</p></div> (常放右栏)
+4. 密集表格：<table class="dense-table">...</table>
+5. 图片叠底：<div class="image-stack"><img src="...">...</div>
+
+【CSS 上下文 (已内置，无需输出 CSS，只需使用 class)】
+${DEEP_READING_CSS}
+
+【第三步：输出要求】
+1. 仅输出 <section>...</section> 标签部分。
+2. 不要包含 <html>, <head>, <style>。
+3. 根据用户输入的大纲，自动分配页码和布局。
+4. 确保每一页都有 sidebar 和 slide-content 结构。
+`;
+            } else {
+                systemPrompt = `You are an expert presentation designer using Reveal.js. 
+                The user will provide either raw text/outline OR existing HTML.
+                Theme: '${theme}'.
+                Task:
+                1. If input is text/markdown: Convert to semantic Reveal.js HTML (<section> tags).
+                2. If input is HTML: Refactor and improve it.
+                3. Use <h2> for slide titles, <ul>/<li> for lists. Add 'fragment' class for step-by-step.
+                4. RETURN ONLY HTML TAGS (e.g., <section>...</section>). NO <html>/head/body.
+                5. Do NOT use markdown code fences.
+                `;
+            }
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 45000); // 45秒超时
+
+            try {
+                const baseUrl = config.baseUrl.replace(/\/$/, "");
+                const url = baseUrl.endsWith('/v1') ? `${baseUrl}/chat/completions` : `${baseUrl}/v1/chat/completions`;
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${config.key}`
+                    },
+                    body: JSON.stringify({
+                        model: config.model || 'gpt-3.5-turbo',
+                        messages: [
+                            { role: "system", content: systemPrompt },
+                            { role: "user", content: currentCode }
+                        ],
+                        temperature: 0.7
+                    }),
+                    signal: controller.signal
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API Error: ${response.status}`);
+                }
+
+                const data = await response.json();
+                let newCode = data.choices[0].message.content;
+                
+                // === 清理 <think> 和 markdown ===
+                newCode = newCode.replace(/<think>[\s\S]*?<\/think>/gi, '');
+                newCode = newCode.replace(/```html/g, '').replace(/```/g, '').trim();
+                
+                htmlInput.value = newCode;
+                renderPreview();
+                
+                statusTitle.innerText = '✅ 生成完成';
+                progressText.innerText = '幻灯片已更新';
+                
+            } catch (err) {
+                if (err.name === 'AbortError') {
+                    showError('请求超时，请检查网络或 API 响应速度');
+                } else {
+                    showError('AI 请求失败: ' + err.message);
+                }
+                console.error(err);
+            } finally {
+                clearTimeout(timeoutId);
+                // 确保无论成功失败，Loading 都会关闭
+                if (spinner.style.display !== 'none' || !errorLog.style.display) {
+                    spinner.style.display = 'none';
+                    setTimeout(hideOverlay, 1500);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
