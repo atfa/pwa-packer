@@ -132,16 +132,17 @@
             <div class="logo-box">R</div>
             <div style="line-height: 1.2;">
                 <h1 style="font-size: 16px; font-weight: 600; color: #1f2937;">Reveal to PPTX</h1>
-                <span style="font-size: 10px; color: #6b7280;">Canvas AI Edition (Fixed)</span>
+                <span style="font-size: 10px; color: #6b7280;" class="hidden sm:inline">生活自动挡</span>
             </div>
         </div>
         
         <div style="display: flex; gap: 8px; align-items: center;">
-            <div class="hidden sm:flex items-center gap-2 mr-2 border-r pr-4 border-gray-200">
-                <span class="text-xs text-gray-500 font-medium">Theme:</span>
-                <select id="themeSelect" onchange="renderPreview()" class="select-mode" style="min-width: 100px; padding: 6px 10px;">
-                    <option value="black">⚫ Black (默认)</option>
-                    <option value="deep-reading">📖 Deep Reading (人文)</option>
+            <!-- Theme Select: 移动端可见优化 -->
+            <div class="flex items-center gap-2 mr-1 sm:mr-2 border-r pr-2 sm:pr-4 border-gray-200">
+                <span class="text-xs text-gray-500 font-medium hidden sm:inline">Theme:</span>
+                <select id="themeSelect" onchange="renderPreview()" class="select-mode" style="min-width: 80px; padding: 6px 2px;">
+                    <option value="black">⚫ Black</option>
+                    <option value="deep-reading">📖 深度阅读</option>
                     <option value="league">🏁 League</option>
                     <option value="white">⚪ White</option>
                     <option value="beige">📜 Beige</option>
@@ -170,7 +171,7 @@
                 <i class="fa-solid fa-rotate-right"></i>
             </button>
             <button id="exportBtn" onclick="triggerExport()" class="btn btn-primary">
-                <i class="fa-solid fa-file-export"></i> <span>导出</span>
+                <i class="fa-solid fa-file-export"></i> <span class="hidden sm:inline">导出</span>
             </button>
         </div>
     </header>
