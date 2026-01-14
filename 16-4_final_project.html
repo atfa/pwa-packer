@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chapter 16: Final Project</title>
+    <style>
+        :root {
+            --slide-w: 1280px;
+            --slide-h: 720px;
+            --bg-color: #f7f8fa;
+            --card-bg: #ffffff;
+            --primary: #2563eb;
+            --primary-light: #eff6ff;
+            --text-main: #1e293b;
+            --text-sub: #64748b;
+            --text-accent: #3b82f6;
+            --border: #e2e8f0;
+            --shadow: 0 10px 30px -10px rgba(0,0,0,0.08);
+            --radius: 20px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #1a1a1a;
+            font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 0;
+            gap: 60px;
+        }
+
+        .slide {
+            width: var(--slide-w);
+            height: var(--slide-h);
+            background: var(--bg-color);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            padding: 50px 80px;
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+        }
+
+        /* Typography */
+        h1 {
+            font-size: 42px;
+            font-weight: 800;
+            color: var(--text-main);
+            letter-spacing: -0.02em;
+        }
+
+        h2 {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 24px;
+        }
+
+        h3 {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-main);
+            margin-bottom: 12px;
+        }
+
+        p {
+            font-size: 16px;
+            line-height: 1.6;
+            color: var(--text-sub);
+        }
+
+        .en-subtitle {
+            font-size: 14px;
+            color: var(--text-accent);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: 700;
+            margin-top: 8px;
+            display: block;
+        }
+
+        /* Layout Utilities */
+        .header {
+            text-align: center;
+            margin-bottom: 50px;
+            flex-shrink: 0;
+        }
+        
+        .header.left {
+            text-align: left;
+            margin-bottom: 40px;
+            border-left: 5px solid var(--primary);
+            padding-left: 20px;
+        }
+
+        .content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 30px; }
+        .grid-2-1 { display: grid; grid-template-columns: 2fr 1fr; gap: 40px; }
+
+        /* Components */
+        .card {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            padding: 30px;
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(255,255,255,0.5);
+        }
+
+        .tag {
+            display: inline-block;
+            background: var(--primary-light);
+            color: var(--primary);
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .number {
+            font-size: 64px;
+            font-weight: 900;
+            color: #e2e8f0;
+            line-height: 1;
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 0;
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        .feature-icon {
+            width: 24px;
+            height: 24px;
+            background: var(--primary-light);
+            color: var(--primary);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            flex-shrink: 0;
+            font-size: 14px;
+        }
+
+        /* Diagram Styles for Slide 2 */
+        .diagram-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            position: relative;
+        }
+        .agent-box {
+            background: white;
+            border: 2px solid var(--primary);
+            border-radius: 16px;
+            padding: 20px 40px;
+            text-align: center;
+            position: relative;
+            z-index: 2;
+            box-shadow: 0 4px 20px rgba(37, 99, 235, 0.1);
+            width: 320px;
+        }
+        .agent-title { font-weight: 700; font-size: 18px; color: var(--text-main); }
+        .agent-role { font-size: 12px; color: var(--text-sub); margin-top: 4px; }
+        .flow-arrow {
+            width: 2px;
+            background: #cbd5e1;
+            position: absolute;
+        }
+        .flow-arrow::after {
+            content: '';
+            position: absolute;
+            border: 6px solid transparent;
+        }
+
+        /* Requirements List */
+        .checklist-item {
+            background: white;
+            padding: 15px 20px;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 15px;
+            color: var(--text-main);
+            border: 1px solid var(--border);
+        }
+        .check-box {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--primary);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .check-box::after {
+            content: '✓';
+            color: var(--primary);
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        /* Tree View */
+        .tree-view {
+            font-family: 'Menlo', 'Monaco', monospace;
+            font-size: 13px;
+            line-height: 1.8;
+            color: var(--text-main);
+        }
+        .tree-item { padding-left: 20px; border-left: 1px solid #cbd5e1; position: relative; }
+        .tree-item::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 12px;
+            width: 15px;
+            height: 1px;
+            background: #cbd5e1;
+        }
+        .folder { color: var(--primary); font-weight: 600; }
+        .file { color: var(--text-main); }
+        .comment { color: #94a3b8; font-style: italic; margin-left: 10px; }
+
+        /* PDF Export Optimizations */
+        @media print {
+            body {
+                background: none;
+                margin: 0;
+                padding: 0;
+                display: block; /* Disable flex centering for print flow */
+            }
+            .slide {
+                width: 1280px;
+                height: 720px;
+                margin: 0;
+                box-shadow: none; /* Remove shadows for cleaner print */
+                page-break-after: always;
+                break-after: page;
+                border: none;
+            }
+            /* Hide the slide container styling if needed, but keeping bg colors is usually desired */
+            
+            /* Remove the gap from body */
+            body { gap: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Slide 1: Cover -->
+    <div class="slide">
+        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
+            <div style="background: var(--primary-light); color: var(--primary); padding: 8px 16px; border-radius: 30px; font-weight: 700; font-size: 14px; margin-bottom: 30px; letter-spacing: 1px;">
+                CHAPTER 16 • FINAL PROJECT
+            </div>
+            <h1 style="font-size: 64px; margin-bottom: 10px;">智能论文助手系统</h1>
+            <span class="en-subtitle" style="font-size: 20px; color: var(--text-sub);">INTELLIGENT PAPER ASSISTANT SYSTEM</span>
+            <div style="width: 80px; height: 4px; background: var(--primary); margin: 40px auto;"></div>
+            <p style="max-width: 600px; color: var(--text-sub);">
+                从 Prompt 工程到多 Agent 协作系统<br>
+                构建企业级 AI 应用的终极实践
+            </p>
+        </div>
+        <div style="position: absolute; bottom: 40px; width: 100%; text-align: center; color: #cbd5e1; font-size: 12px; letter-spacing: 2px;">
+            AI APP DEVELOPMENT COURSE
+        </div>
+    </div>
+
+    <!-- Slide 2: Project Overview & Architecture -->
+    <div class="slide">
+        <div class="header left">
+            <h1>系统架构设计</h1>
+            <span class="en-subtitle">SYSTEM ARCHITECTURE & WORKFLOW</span>
+        </div>
+        <div class="content" style="position: relative;">
+            <div class="diagram-container">
+                <!-- Orchestrator -->
+                <div class="agent-box" style="margin-bottom: 60px;">
+                    <div class="agent-title">Orchestrator Agent</div>
+                    <div class="agent-role">任务编排 • 决策中枢 • 最终报告</div>
+                    <div style="font-size: 12px; margin-top: 8px; color: var(--primary); background: var(--primary-light); padding: 4px; border-radius: 4px; display: inline-block;">Human-in-the-loop</div>
+                </div>
+
+                <!-- Splitting Paths -->
+                <div style="display: flex; gap: 100px; margin-top: 20px;">
+                    <!-- Reviewer -->
+                    <div class="agent-box">
+                        <div class="agent-title">Reviewer Agent</div>
+                        <div class="agent-role">深度评审 • RAG 检索 • 评分</div>
+                        <div style="margin-top: 10px; border-top: 1px dashed #e2e8f0; padding-top: 10px; font-size: 12px; text-align: left;">
+                            <span style="display:block; color: #64748b;">🛠 search_standards</span>
+                            <span style="display:block; color: #64748b;">🛠 evaluate_section</span>
+                        </div>
+                    </div>
+                    <!-- Polisher -->
+                    <div class="agent-box">
+                        <div class="agent-title">Polisher Agent</div>
+                        <div class="agent-role">文本润色 • 语法检查 • 优化</div>
+                        <div style="margin-top: 10px; border-top: 1px dashed #e2e8f0; padding-top: 10px; font-size: 12px; text-align: left;">
+                            <span style="display:block; color: #64748b;">🛠 polish_text</span>
+                            <span style="display:block; color: #64748b;">🛠 check_grammar (MCP)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Connectors SVG -->
+                <svg style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1;">
+                    <!-- Top to Split -->
+                    <path d="M560 115 L560 160 L380 160 L380 200" fill="none" stroke="#cbd5e1" stroke-width="2" marker-end="url(#arrow)"/>
+                    <path d="M560 115 L560 160 L740 160 L740 200" fill="none" stroke="#cbd5e1" stroke-width="2" marker-end="url(#arrow)"/>
+                    <!-- Defs -->
+                    <defs>
+                        <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+                            <path d="M0,0 L0,6 L9,3 z" fill="#cbd5e1" />
+                        </marker>
+                    </defs>
+                </svg>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 3: Technical Specs -->
+    <div class="slide">
+        <div class="header">
+            <h1>核心技术规格</h1>
+            <span class="en-subtitle">TECHNICAL SPECIFICATIONS</span>
+        </div>
+        <div class="content grid-3">
+            <!-- Col 1: Agents -->
+            <div class="card" style="position: relative;">
+                <span class="number">01</span>
+                <h3>Agent 协作网络</h3>
+                <p style="margin-bottom: 20px;">基于分治思想的多智能体协作</p>
+                <div class="feature-item">
+                    <div class="feature-icon">O</div>
+                    <div>
+                        <strong>Orchestrator</strong>
+                        <div style="font-size: 12px; color: var(--text-sub);">任务拆解与全局控场</div>
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">R</div>
+                    <div>
+                        <strong>Reviewer</strong>
+                        <div style="font-size: 12px; color: var(--text-sub);">基于 RAG 的专业评审</div>
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">P</div>
+                    <div>
+                        <strong>Polisher</strong>
+                        <div style="font-size: 12px; color: var(--text-sub);">基于 MCP 的专业润色</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Col 2: Tools -->
+            <div class="card" style="position: relative;">
+                <span class="number">02</span>
+                <h3>Function Call (9个)</h3>
+                <p style="margin-bottom: 20px;">连接 AI 与业务逻辑的桥梁</p>
+                <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                    <span class="tag">ask_human</span>
+                    <span class="tag">call_reviewer</span>
+                    <span class="tag">call_polisher</span>
+                    <span class="tag">search_standards</span>
+                    <span class="tag">evaluate_section</span>
+                    <span class="tag">polish_text</span>
+                    <span class="tag">improve_clarity</span>
+                    <span class="tag">check_grammar</span>
+                </div>
+            </div>
+
+            <!-- Col 3: Infra -->
+            <div class="card" style="position: relative;">
+                <span class="number">03</span>
+                <h3>基础设施</h3>
+                <p style="margin-bottom: 20px;">企业级可扩展架构</p>
+                <div class="feature-item">
+                    <div class="feature-icon">M</div>
+                    <div>
+                        <strong>MCP Server</strong>
+                        <div style="font-size: 12px; color: var(--text-sub);">Grammar Checker 服务集成</div>
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">R</div>
+                    <div>
+                        <strong>RAG 知识库</strong>
+                        <div style="font-size: 12px; color: var(--text-sub);">768维向量检索 / 24 Chunks</div>
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">E</div>
+                    <div>
+                        <strong>Env Support</strong>
+                        <div style="font-size: 12px; color: var(--text-sub);">Local Embedding / Cloud LLM</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 4: Enterprise Value -->
+    <div class="slide">
+        <div class="header left">
+            <h1>企业级应用价值</h1>
+            <span class="en-subtitle">ENTERPRISE SCENARIOS & VALUE</span>
+        </div>
+        <div class="content grid-2">
+            <div>
+                <h3>通用架构范式</h3>
+                <p style="margin-bottom: 30px;">这不仅是论文助手，更是企业智能系统的基石。只需替换组件，即可适配多种业务场景。</p>
+                
+                <div style="background: white; border-radius: 16px; padding: 0; overflow: hidden; box-shadow: var(--shadow); border: 1px solid var(--border);">
+                    <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
+                        <tr style="background: #f1f5f9;">
+                            <th style="padding: 15px; color: var(--text-sub);">场景案例</th>
+                            <th style="padding: 15px; color: var(--text-sub);">Reviewer 变形</th>
+                            <th style="padding: 15px; color: var(--text-sub);">Polisher 变形</th>
+                        </tr>
+                        <tr>
+                            <td style="padding: 15px; border-bottom: 1px solid #e2e8f0;">⚖️ 法律科技</td>
+                            <td style="padding: 15px; border-bottom: 1px solid #e2e8f0;">合规审核 Agent</td>
+                            <td style="padding: 15px; border-bottom: 1px solid #e2e8f0;">合同修订 Agent</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 15px; border-bottom: 1px solid #e2e8f0;">💰 金融风控</td>
+                            <td style="padding: 15px; border-bottom: 1px solid #e2e8f0;">数据分析 Agent</td>
+                            <td style="padding: 15px; border-bottom: 1px solid #e2e8f0;">报告生成 Agent</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 15px;">💻 软件开发</td>
+                            <td style="padding: 15px;">代码审查 Agent</td>
+                            <td style="padding: 15px;">自动修复 Agent</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 20px;">
+                <div class="card" style="flex: 1; display: flex; align-items: center; gap: 20px;">
+                    <div style="font-size: 32px; color: var(--primary);">01</div>
+                    <div>
+                        <strong>技术栈成熟度</strong>
+                        <p style="font-size: 13px; color: var(--text-sub);">Function Call 接口化 • MCP 微服务化 • RAG 知识增强</p>
+                    </div>
+                </div>
+                <div class="card" style="flex: 1; display: flex; align-items: center; gap: 20px;">
+                    <div style="font-size: 32px; color: var(--primary);">02</div>
+                    <div>
+                        <strong>高度可扩展</strong>
+                        <p style="font-size: 13px; color: var(--text-sub);">标准化定义 Agent 角色 • 插件式接入 MCP 服务</p>
+                    </div>
+                </div>
+                <div class="card" style="flex: 1; display: flex; align-items: center; gap: 20px;">
+                    <div style="font-size: 32px; color: var(--primary);">03</div>
+                    <div>
+                        <strong>成本效益</strong>
+                        <p style="font-size: 13px; color: var(--text-sub);">多 Agent 分治降低单一模型上下文压力与成本</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 5: Project Tasks -->
+    <div class="slide">
+        <div class="header">
+            <h1>项目要求与交付</h1>
+            <span class="en-subtitle">REQUIREMENTS & DELIVERABLES</span>
+        </div>
+        <div class="content grid-2-1">
+            <!-- Left: Checklist -->
+            <div>
+                <h3>核心功能清单</h3>
+                <div class="checklist-item">
+                    <div class="check-box"></div>
+                    <div><strong>多 Agent 协作系统</strong>：Orchestrator / Reviewer / Polisher</div>
+                </div>
+                <div class="checklist-item">
+                    <div class="check-box"></div>
+                    <div><strong>智能决策与检索</strong>：LLM 编排 + RAG 评审标准检索</div>
+                </div>
+                <div class="checklist-item">
+                    <div class="check-box"></div>
+                    <div><strong>工具链集成</strong>：MCP 语法服务 + 9个 Function Call</div>
+                </div>
+                
+                <h3 style="margin-top: 30px;">技术加分项</h3>
+                <div class="checklist-item" style="border-style: dashed;">
+                    <span style="font-size: 18px;">✨</span>
+                    <div>全自动运行模式 (No Human Interaction)</div>
+                </div>
+                <div class="checklist-item" style="border-style: dashed;">
+                    <span style="font-size: 18px;">📊</span>
+                    <div>多次评审取平均分 (Ensemble method)</div>
+                </div>
+            </div>
+
+            <!-- Right: Code Structure -->
+            <div class="card" style="background: #1e293b; color: #f8fafc; border: none;">
+                <h3 style="color: white; border-bottom: 1px solid #334155; padding-bottom: 10px; margin-bottom: 15px;">Project Structure</h3>
+                <div class="tree-view">
+                    <div>code/ch16/</div>
+                    <div class="tree-item"><span class="folder">agents/</span></div>
+                    <div class="tree-item" style="padding-left: 40px;">base_agent.py</div>
+                    <div class="tree-item" style="padding-left: 40px;">orchestrator_agent.py</div>
+                    <div class="tree-item" style="padding-left: 40px;">reviewer_agent.py...</div>
+                    <div class="tree-item"><span class="folder">mcp_server/</span></div>
+                    <div class="tree-item" style="padding-left: 40px;">grammar_checker.py</div>
+                    <div class="tree-item"><span class="folder">functions/</span></div>
+                    <div class="tree-item" style="padding-left: 40px;">orchestrator_tools.py...</div>
+                    <div class="tree-item"><span class="file">main.py</span> <span class="comment"># Entry</span></div>
+                    <div class="tree-item"><span class="file">config.py</span></div>
+                    <div class="tree-item"><span class="file">.env</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 6: Conclusion -->
+    <div class="slide">
+        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
+            <div style="background: var(--primary-light); color: var(--text-main); padding: 10px 30px; border-radius: 40px; font-weight: 600; font-size: 16px; margin-bottom: 40px;">
+                从这里开始，构建真正的 AI 应用
+            </div>
+            
+            <h1 style="font-size: 56px; margin-bottom: 30px;">"愿你的 Code 永无 Bug,<br>愿你的 Prompt 总能命中。"</h1>
+            
+            <div class="grid-3" style="gap: 60px; margin-top: 40px; text-align: left;">
+                <div>
+                    <h3 style="color: var(--primary);">掌握架构</h3>
+                    <p style="font-size: 14px;">不只是调用 API，而是理解 Agent、RAG、MCP 的组合力量。</p>
+                </div>
+                <div>
+                    <h3 style="color: var(--primary);">理解原理</h3>
+                    <p style="font-size: 14px;">模型会变，但协作、工具使用、知识增强的底层逻辑永恒。</p>
+                </div>
+                <div>
+                    <h3 style="color: var(--primary);">面向未来</h3>
+                    <p style="font-size: 14px;">准备好迎接自主 Agent 与多模态交互的新时代。</p>
+                </div>
+            </div>
+
+            <div style="margin-top: 80px; color: var(--text-sub); font-weight: 500;">
+                祝学业顺利，前程似锦。
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>
